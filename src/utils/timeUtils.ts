@@ -1,0 +1,45 @@
+export function parseTime(str: string): number | undefined {
+  if (!str) return undefined;
+  const hMatch = str.match(/(\d+):(\d+):([0-9.]+)/);
+  if (hMatch) {
+    return parseInt(hMatch[1]) * 3600 + parseInt(hMatch[2]) * 60 + parseFloat(hMatch[3]);
+  }
+  const mMatch = str.match(/(\d+):([0-9.]+)/);
+  if (mMatch) {
+    return parseInt(mMatch[1]) * 60 + parseFloat(mMatch[2]);
+  }
+  return undefined;
+}
+
+export function makeTime(s: number, sep: string = ':', fmt: string = '%#07.4f'): string {
+  const h = Math.floor(s / 3600);
+  s = s - h * 3600;
+  const m = Math.floor(s / 60);
+  s = s - m * 60;
+
+  return (h > 0 ? h.toString() + sep : '') + m.toString() + sep + fmt.replace('%#07.4f', s.toFixed(4));
+}
+
+export function computeTime(times: number[]): [number, number, number] {
+  const num = times?.length || 0;
+  if (num < 1) return [0, 0, 0];
+
+  let avgtime = 0;
+  for (const time of times) {
+    avgtime += time;
+  }
+  avgtime /= num;
+
+  let variance = 0;
+  for (const time of times) {
+    const diff = time - avgtime;
+    variance += diff * diff;
+  }
+  variance = Math.sqrt(variance);
+
+  return [num, avgtime, variance];
+}
+
+export function outputTime(time: number): string {
+  return time.toFixed(2);
+}
