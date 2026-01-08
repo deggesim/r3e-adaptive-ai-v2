@@ -98,5 +98,6 @@ export interface PlayerTimesClass {
 }
 
 export interface PlayerTimesTrack {
+  playertimes?: number[];
   playertime?: number;
 }

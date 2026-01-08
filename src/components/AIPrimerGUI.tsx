@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
-import type { Assets, ProcessedDatabase, PlayerTimes } from "../types";
+import type { Assets, ProcessedDatabase, PlayerTimes, Database } from "../types";
 import { makeTime } from "../utils/timeUtils";
 import { computeTime } from "../utils/timeUtils";
+import { buildXML } from "../utils/xmlBuilder";
 
 interface AIPrimerGUIProps {
   assets: Assets | null;
   processed: ProcessedDatabase | null;
   playertimes: PlayerTimes | null;
+  database?: Database;
   onApplyModification: (
     classid: string,
     trackid: string,
@@ -22,6 +24,7 @@ const AIPrimerGUI: React.FC<AIPrimerGUIProps> = ({
   assets,
   processed,
   playertimes,
+  database,
   onApplyModification,
   onRemoveGenerated,
   onResetAll,
@@ -118,13 +121,39 @@ const AIPrimerGUI: React.FC<AIPrimerGUIProps> = ({
 
   const handleApply = () => {
     if (selectedClassId && selectedTrackId && selectedAILevel) {
-      onApplyModification(
-        selectedClassId,
-        selectedTrackId,
-        aifrom,
-        aito,
-        aiSpacing
+      const shouldApply = confirm(
+        `Apply modification:\n\n${assets!.classes[selectedClassId].name} - ${assets!.tracks[selectedTrackId].name}\nAI Range: ${aifrom} - ${aito}\n\nThis will download the modified aiadaptation.xml file.`
       );
+
+      if (shouldApply) {
+        // Call the callback to apply modifications to database
+        onApplyModification(
+          selectedClassId,
+          selectedTrackId,
+          aifrom,
+          aito,
+          aiSpacing
+        );
+
+        // Download the XML file
+        if (assets && database) {
+          try {
+            const xmlContent = buildXML(database, playertimes || { classes: {} }, assets);
+            const blob = new Blob([xmlContent], { type: "application/xml" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "aiadaptation.xml";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          } catch (error) {
+            console.error("Error generating XML:", error);
+            alert("Error generating XML file");
+          }
+        }
+      }
     }
   };
 

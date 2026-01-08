@@ -49,20 +49,23 @@ export function parseAdaptive(xmlText: string, database: Database, playertimes?:
       if (playertimes && playerentries) {
         const class_pt = playertimes.classes[classid] || { tracks: {} };
         playertimes.classes[classid] = class_pt;
-        const track_pt = class_pt.tracks[trackid] || { playertime: undefined };
+        const track_pt = class_pt.tracks[trackid] || { playertimes: [], playertime: undefined };
         class_pt.tracks[trackid] = track_pt;
 
         const lapTimes = Array.isArray(playerentries.lapTime) ? playerentries.lapTime : [playerentries.lapTime];
+        const allTimes: number[] = [];
         let mintime = 1000000;
         for (const entry of lapTimes) {
           if (entry) {
             const playertime = parseFloat(entry["#text"] || entry);
             if (!isNaN(playertime)) {
+              allTimes.push(playertime);
               mintime = Math.min(playertime, mintime);
             }
           }
         }
-        if (mintime < 1000000) {
+        if (allTimes.length > 0) {
+          track_pt.playertimes = allTimes;
           track_pt.playertime = mintime;
         }
       }

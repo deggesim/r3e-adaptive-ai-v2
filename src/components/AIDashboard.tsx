@@ -3,6 +3,7 @@ import type { RaceRoomData, Assets, Database, ProcessedDatabase, PlayerTimes } f
 import { parseJson } from '../utils/jsonParser';
 import { parseAdaptive } from '../utils/xmlParser';
 import { processDatabase } from '../utils/databaseProcessor';
+
 import AIPrimerGUI from './AIPrimerGUI';
 
 const AIDashboard: React.FC = () => {
@@ -54,22 +55,113 @@ const AIDashboard: React.FC = () => {
   }, [database, playerTimes]);
 
   const handleApplyModification = useCallback((classid: string, trackid: string, aifrom: number, aito: number, aiSpacing: number) => {
-    // TODO: Implement XML modification
-    console.log('Apply modification:', { classid, trackid, aifrom, aito, aiSpacing });
-    alert('XML modification not yet implemented in web version');
-  }, []);
+    if (!processed.classes[classid]?.tracks[trackid]) {
+      alert('No processed data available for this class/track combination');
+      return;
+    }
+
+    const newDatabase = JSON.parse(JSON.stringify(database)) as Database;
+    
+    // Ensure class and track exist in database
+    if (!newDatabase.classes[classid]) {
+      newDatabase.classes[classid] = { tracks: {} };
+    }
+    if (!newDatabase.classes[classid].tracks[trackid]) {
+      newDatabase.classes[classid].tracks[trackid] = { ailevels: {} };
+    }
+
+    const track = newDatabase.classes[classid].tracks[trackid];
+    const processedTrack = processed.classes[classid].tracks[trackid];
+
+    // Add AI levels from aifrom to aito with aiSpacing step
+    let addedCount = 0;
+    for (let ai = aifrom; ai <= aito; ai += aiSpacing) {
+      const generatedTime = processedTrack.ailevels[ai]?.[0];
+      if (generatedTime) {
+        if (!track.ailevels[ai]) {
+          track.ailevels[ai] = [];
+        }
+        track.ailevels[ai].push(generatedTime);
+        addedCount++;
+      }
+    }
+
+    // Update min/max AI for track
+    const aiLevels = Object.keys(track.ailevels).map(Number);
+    track.minAI = Math.min(...aiLevels);
+    track.maxAI = Math.max(...aiLevels);
+
+    // Update min/max AI for class
+    const classData = newDatabase.classes[classid];
+    const allTrackAIs = Object.values(classData.tracks).flatMap(t => 
+      Object.keys(t.ailevels).map(Number)
+    );
+    classData.minAI = Math.min(...allTrackAIs);
+    classData.maxAI = Math.max(...allTrackAIs);
+
+    setDatabase(newDatabase);
+    setProcessed(processDatabase(newDatabase));
+    
+    alert(`Added ${addedCount} AI levels to the database`);
+  }, [database, processed]);
 
   const handleRemoveGenerated = useCallback(() => {
-    // TODO: Implement remove generated
-    console.log('Remove generated');
-    alert('Remove generated not yet implemented in web version');
-  }, []);
+    const newDatabase = JSON.parse(JSON.stringify(database)) as Database;
+    let removedCount = 0;
+
+    for (const classData of Object.values(newDatabase.classes)) {
+      for (const track of Object.values(classData.tracks)) {
+        for (const [aiLevel, times] of Object.entries(track.ailevels)) {
+          // Remove AI levels with only 1 sample (likely generated)
+          if (times.length === 1) {
+            delete track.ailevels[Number(aiLevel)];
+            removedCount++;
+          }
+        }
+
+        // Update min/max AI for track
+        const aiLevels = Object.keys(track.ailevels).map(Number);
+        if (aiLevels.length > 0) {
+          track.minAI = Math.min(...aiLevels);
+          track.maxAI = Math.max(...aiLevels);
+        } else {
+          delete track.minAI;
+          delete track.maxAI;
+        }
+      }
+
+      // Update min/max AI for class
+      const allTrackAIs = Object.values(classData.tracks).flatMap(t => 
+        Object.keys(t.ailevels).map(Number)
+      );
+      if (allTrackAIs.length > 0) {
+        classData.minAI = Math.min(...allTrackAIs);
+        classData.maxAI = Math.max(...allTrackAIs);
+      } else {
+        delete classData.minAI;
+        delete classData.maxAI;
+      }
+    }
+
+    setDatabase(newDatabase);
+    setProcessed(processDatabase(newDatabase));
+    
+    alert(`Removed ${removedCount} likely generated AI levels`);
+  }, [database]);
 
   const handleResetAll = useCallback(() => {
-    // TODO: Implement reset all
-    console.log('Reset all');
-    alert('Reset all not yet implemented in web version');
+    if (!confirm('Are you sure you want to reset all AI times? This action cannot be undone.')) {
+      return;
+    }
+
+    setDatabase({ classes: {} });
+    setProcessed({ classes: {} });
+    setPlayerTimes({ classes: {} });
+    
+    alert('All AI times and player times have been reset');
   }, []);
+
+
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
@@ -101,6 +193,7 @@ const AIDashboard: React.FC = () => {
         assets={assets}
         processed={processed}
         playertimes={playerTimes}
+        database={database}
         onApplyModification={handleApplyModification}
         onRemoveGenerated={handleRemoveGenerated}
         onResetAll={handleResetAll}
