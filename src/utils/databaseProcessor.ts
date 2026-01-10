@@ -1,25 +1,38 @@
 import type { Database, ProcessedDatabase } from "../types";
 import { fitLinear, computeTime } from "./fitting";
 
+// Configuration for the linear fitting algorithm
 const CFG = {
-  fitAll: false,
-  testMinAIdiffs: 2,
-  testMaxTimePct: 0.1,
-  testMaxFailsPct: 0.1,
+  minAI: 80, // Minimum AI level for generated predictions
+  maxAI: 120, // Maximum AI level for generated predictions
+  fitAll: false, // If true, fit all individual lap times; if false, fit averaged times per AI level
+  testMinAIdiffs: 2, // Minimum difference between min and max AI levels required to attempt fitting
+  testMaxTimePct: 0.1, // Maximum deviation tolerance (as percentage of minimum lap time)
+  testMaxFailsPct: 0.1, // Maximum allowed failure rate (10% of tested points)
 };
 
+/**
+ * Generates a linear fitting function for a track's AI lap times.
+ * Uses existing sampled data (min/max AI levels) to create a linear regression model.
+ * Returns a function that can predict lap times for any AI level between 80-120.
+ * Returns undefined if the track doesn't have enough data or if validation fails.
+ */
 function trackGenerator(
   _classid: string,
   _trackid: string,
   track: any
 ): ((t: number) => number) | undefined {
+  // Validate: need at least testMinAIdiffs difference between min and max AI levels
   if (!track.maxAI || track.maxAI - track.minAI < CFG.testMinAIdiffs)
     return undefined;
 
+  // Prepare data for linear regression: x = AI levels, y = lap times
   const x: number[] = [];
   const y: number[] = [];
 
+  // Collect data points: either all individual lap times or averaged times per AI level
   if (CFG.fitAll) {
+    // Use all individual lap times for fitting
     for (let i = track.minAI; i <= track.maxAI; i++) {
       const times = track.ailevels[i] || [];
       for (const time of times) {
@@ -28,6 +41,7 @@ function trackGenerator(
       }
     }
   } else {
+    // Use averaged lap time per AI level
     for (let i = track.minAI; i <= track.maxAI; i++) {
       const { num, avg: time } = computeTime(track.ailevels[i] || []);
       if (num > 0) {
@@ -37,11 +51,14 @@ function trackGenerator(
     }
   }
 
+  // Linear regression: fit y = a + b*x where y is lap time and x is AI level
+  // (quadratic term c is reserved for future enhancement)
   const { a, b } = fitLinear(x, y);
   const c = 0;
 
   const generator = (t: number) => a + b * t + (c || 0) * (t * t);
 
+  // Validate fit quality: check that predicted times deviate by less than testMaxTimePct from actual data
   const { avg: minTime } = computeTime(track.ailevels[track.minAI] || []);
   const threshold = minTime * CFG.testMaxTimePct;
 
@@ -61,7 +78,8 @@ function trackGenerator(
         }
       }
       if (base > (lasttime || base)) {
-        return undefined; // not monotonically decreasing
+        // Lap times must decrease monotonically with increasing AI skill level
+        return undefined;
       }
       lasttime = base;
     }
@@ -78,37 +96,49 @@ function trackGenerator(
         }
       }
       if (base > (lasttime || base)) {
-        return undefined; // not monotonically decreasing
+        // Lap times must decrease monotonically with increasing AI skill level
+        return undefined;
       }
       lasttime = base;
     }
   }
 
+  // Accept the fit only if at most testMaxFailsPct of tested points deviate beyond threshold
   const accepted = tested - passed <= Math.max(1, tested * CFG.testMaxFailsPct);
   return accepted ? generator : undefined;
 }
 
+/**
+ * Process the database to generate AI level predictions for all tracks/classes.
+ * For each track with sufficient data points, a linear fit is computed and used
+ * to generate predicted lap times for AI levels 80-120 in 1-point increments.
+ */
 export function processDatabase(database: Database): ProcessedDatabase {
   const filtered: ProcessedDatabase = { classes: {} };
 
+  // Iterate through all classes and tracks to build prediction generators
   for (const [classid, classData] of Object.entries(database.classes)) {
     for (const [trackid, track] of Object.entries(classData.tracks)) {
+      // Generate fitting function if track has sufficient data
       const gen = trackGenerator(classid, trackid, track);
       if (gen) {
+        // Store generated predictions: ensure class exists and set min/max AI range
         const classf = filtered.classes[classid] || { tracks: {} };
         filtered.classes[classid] = classf;
 
-        classf.minAI = 80;
-        classf.maxAI = 120;
+        classf.minAI = CFG.minAI;
+        classf.maxAI = CFG.maxAI;
 
+        // Generate predicted lap times for AI levels CFG.minAI to CFG.maxAI
         const ailevels: Record<number, number[]> = {};
-        for (let i = 80; i <= 120; i++) {
+        for (let i = CFG.minAI; i <= CFG.maxAI; i++) {
+          // Round predictions to 2 decimal places for consistency
           ailevels[i] = [parseFloat(gen(i).toFixed(2))];
         }
 
         const trackf = {
-          minAI: 80,
-          maxAI: 120,
+          minAI: CFG.minAI,
+          maxAI: CFG.maxAI,
           ailevels,
           samplesCount: {},
         };

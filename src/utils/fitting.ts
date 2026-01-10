@@ -1,13 +1,19 @@
 import { create, all } from "mathjs";
 
+// MathJS instance for linear algebra operations (matrix multiply, solve, transpose)
 const math = create(all);
 
 export interface FitResult {
-  a: number;
-  b: number;
-  c?: number;
+  a: number; // Intercept (constant term)
+  b: number; // Slope (linear coefficient)
+  c?: number; // Quadratic coefficient (reserved for future parabolic fit)
 }
 
+/**
+ * Linear least-squares regression: y = a + b*x
+ * Uses normal equations: (A^T * A)^(-1) * A^T * Y
+ * Solves via LU decomposition for numerical stability.
+ */
 export function fitLinear(xValues: number[], yValues: number[]): FitResult {
   if (xValues.length !== yValues.length || xValues.length < 2) {
     throw new Error(
@@ -15,18 +21,18 @@ export function fitLinear(xValues: number[], yValues: number[]): FitResult {
     );
   }
 
-  // Create matrices
+  // Build design matrix: each row is [1, x_i] for intercept and slope
   const A = xValues.map((x) => [1, x]);
   const Y = yValues.map((y) => [y]);
 
-  // A^T * A
+  // Normal equations: A^T * A
   const AT = math.transpose(A);
   const ATA = math.multiply(AT, A);
 
-  // A^T * Y
+  // Normal equations: A^T * Y
   const ATY = math.multiply(AT, Y);
 
-  // Solve ATA * X = ATY
+  // Solve (A^T * A) * X = A^T * Y using LU decomposition
   const X = math.lusolve(ATA, ATY) as number[][];
 
   return { a: X[0][0], b: X[1][0] };

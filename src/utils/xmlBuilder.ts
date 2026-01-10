@@ -1,18 +1,27 @@
 import type { Assets, Database, PlayerTimes } from '../types';
 
+/**
+ * Formats numbers for XML export: converts to fixed 4 decimals then removes trailing zeros.
+ * Example: 1.2500 -> 1.25, 1.0000 -> 1
+ */
 function formatNumber(value: number): string {
   const formatted = value.toFixed(4);
   return formatted.replace(/\.?0+$/, '').replace(/\.0+$/, '');
 }
 
+/**
+ * Builds an empty matrix of all track/class combinations sorted numerically by ID.
+ * This ensures the XML export includes all combinations even if they have no AI data.
+ */
 function buildEmptyMatrix(assets: Assets): Map<string, Map<string, { aiData: Record<number, number[]>, samplesCount: Record<number, number>, playerTimes: number[] }>> {
   const trackMap = new Map<string, Map<string, { aiData: Record<number, number[]>, samplesCount: Record<number, number>, playerTimes: number[] }>>();
 
-  // Sort tracks by ID numerically
+  // Sort tracks by ID numerically to match original XML format
   const sortedTracks = [...assets.tracksSorted].sort((a, b) => parseInt(a.id) - parseInt(b.id));
-  // Sort classes by ID numerically
+  // Sort classes by ID numerically to match original XML format
   const sortedClasses = [...assets.classesSorted].sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
+  // Initialize all track/class combinations with empty data
   for (const track of sortedTracks) {
     const classMap = new Map<string, { aiData: Record<number, number[]>, samplesCount: Record<number, number>, playerTimes: number[] }>();
     for (const cls of sortedClasses) {
@@ -24,16 +33,23 @@ function buildEmptyMatrix(assets: Assets): Map<string, Map<string, { aiData: Rec
   return trackMap;
 }
 
+/**
+ * Builds the complete aiadaptation.xml file content.
+ * Creates a full matrix of all track/class combinations, merges database and player times,
+ * sorts everything numerically by ID, and formats output to match RaceRoom's structure.
+ */
 export function buildXML(database: Database, playerTimes: PlayerTimes, assets: Assets): string {
   const lines: string[] = [];
 
+  // Build XML header without declaration (to match original format)
   lines.push('<AiAdaptation ID="/aiadaptation">');
   lines.push('  <latestVersion type="uint32">0</latestVersion>');
   lines.push('  <aiAdaptationData>');
 
+  // Initialize empty matrix with all track/class combinations
   const trackMap = buildEmptyMatrix(assets);
 
-  // Merge database data
+  // Merge AI data from database into the matrix
   for (const [classId, classData] of Object.entries(database.classes)) {
     for (const [trackId, trackData] of Object.entries(classData.tracks)) {
       const classMap = trackMap.get(trackId);
@@ -45,14 +61,14 @@ export function buildXML(database: Database, playerTimes: PlayerTimes, assets: A
     }
   }
 
-  // Merge player times
+  // Merge player times from the player times structure
   for (const [classId, classData] of Object.entries(playerTimes.classes)) {
     for (const [trackId, trackData] of Object.entries(classData.tracks)) {
       const classMap = trackMap.get(trackId);
       if (!classMap) continue;
       const entry = classMap.get(classId);
       if (!entry) continue;
-      // Support both array (playertimes) and single value (playertime)
+      // Support both array of all times (playertimes) and single best time (playertime)
       if (trackData.playertimes && Array.isArray(trackData.playertimes)) {
         entry.playerTimes = trackData.playertimes;
       } else if (trackData.playertime !== undefined) {
