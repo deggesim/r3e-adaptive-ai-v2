@@ -3,6 +3,7 @@ import type { RaceRoomData, Assets, Database, ProcessedDatabase, PlayerTimes } f
 import { parseJson } from '../utils/jsonParser';
 import { parseAdaptive } from '../utils/xmlParser';
 import { processDatabase } from '../utils/databaseProcessor';
+import { buildXML } from '../utils/xmlBuilder';
 
 import AIPrimerGUI from './AIPrimerGUI';
 
@@ -179,6 +180,30 @@ const AIDashboard: React.FC = () => {
     alert(`Removed ${removedCount} generated AI levels` + (lines.length ? `\n\nDetails:\n${lines.join('\n')}` : ''));
   }, [database, assets]);
 
+  const handleApplyClick = useCallback((classid: string, trackid: string, aifrom: number, aito: number, aiSpacing: number) => {
+    // Get the updated database from handleApplyModification
+    const updatedDb = handleApplyModification(classid, trackid, aifrom, aito, aiSpacing);
+    
+    // Generate and download the XML file
+    if (assets && updatedDb) {
+      try {
+        const xmlContent = buildXML(updatedDb, playerTimes || { classes: {} }, assets);
+        const blob = new Blob([xmlContent], { type: 'application/xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'aiadaptation.xml';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error generating XML:', error);
+        alert('Error generating XML file');
+      }
+    }
+  }, [assets, playerTimes, handleApplyModification]);
+
   const handleResetAll = useCallback(() => {
     // Confirm destructive action before proceeding
     if (!confirm('Are you sure you want to reset all AI times? This action cannot be undone.')) {
@@ -229,7 +254,7 @@ const AIDashboard: React.FC = () => {
         assets={assets}
         processed={processed}
         playertimes={playerTimes}
-        onApplyModification={handleApplyModification}
+        onApplyClick={handleApplyClick}
         onRemoveGenerated={handleRemoveGenerated}
         onResetAll={handleResetAll}
       />

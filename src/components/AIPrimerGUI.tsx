@@ -1,21 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
-import type { Assets, ProcessedDatabase, PlayerTimes, Database } from "../types";
+import type { Assets, ProcessedDatabase, PlayerTimes } from "../types";
 import { makeTime } from "../utils/timeUtils";
 import { computeTime } from "../utils/timeUtils";
-import { buildXML } from "../utils/xmlBuilder";
 import { CFG } from "../config";
 
 interface AIPrimerGUIProps {
   assets: Assets | null;
   processed: ProcessedDatabase | null;
   playertimes: PlayerTimes | null;
-  onApplyModification: (
-    classid: string,
-    trackid: string,
-    aifrom: number,
-    aito: number,
-    aiSpacing: number
-  ) => Database;
+  onApplyClick: (classid: string, trackid: string, aifrom: number, aito: number, aiSpacing: number) => void;
   onRemoveGenerated: () => void;
   onResetAll: () => void;
 }
@@ -24,7 +17,7 @@ const AIPrimerGUI: React.FC<AIPrimerGUIProps> = ({
   assets,
   processed,
   playertimes,
-  onApplyModification,
+  onApplyClick,
   onRemoveGenerated,
   onResetAll,
 }) => {
@@ -125,33 +118,7 @@ const AIPrimerGUI: React.FC<AIPrimerGUIProps> = ({
       );
 
       if (shouldApply) {
-        // Call the callback to apply modifications to database
-        const updatedDb = onApplyModification(
-          selectedClassId,
-          selectedTrackId,
-          aifrom,
-          aito,
-          aiSpacing
-        );
-
-        // Download the XML file using the updated database from callback
-        if (assets && updatedDb) {
-          try {
-            const xmlContent = buildXML(updatedDb, playertimes || { classes: {} }, assets);
-            const blob = new Blob([xmlContent], { type: "application/xml" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = "aiadaptation.xml";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-          } catch (error) {
-            console.error("Error generating XML:", error);
-            alert("Error generating XML file");
-          }
-        }
+        onApplyClick(selectedClassId, selectedTrackId, aifrom, aito, aiSpacing);
       }
     }
   };
