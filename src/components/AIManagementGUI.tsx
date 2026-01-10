@@ -4,7 +4,7 @@ import { makeTime } from "../utils/timeUtils";
 import { computeTime } from "../utils/timeUtils";
 import { CFG } from "../config";
 
-interface AIPrimerGUIProps {
+interface AIManagementGUIProps {
   assets: Assets | null;
   processed: ProcessedDatabase | null;
   playertimes: PlayerTimes | null;
@@ -13,7 +13,7 @@ interface AIPrimerGUIProps {
   onResetAll: () => void;
 }
 
-const AIPrimerGUI: React.FC<AIPrimerGUIProps> = ({
+const AIManagementGUI: React.FC<AIManagementGUIProps> = ({
   assets,
   processed,
   playertimes,
@@ -263,4 +263,4 @@ const AIPrimerGUI: React.FC<AIPrimerGUIProps> = ({
   );
 };
 
-export default AIPrimerGUI;
+export default AIManagementGUI;

@@ -5,7 +5,7 @@ import { parseAdaptive } from '../utils/xmlParser';
 import { processDatabase } from '../utils/databaseProcessor';
 import { buildXML } from '../utils/xmlBuilder';
 
-import AIPrimerGUI from './AIPrimerGUI';
+import AIManagementGUI from './AIManagementGUI';
 
 const AIDashboard: React.FC = () => {
   const [assets, setAssets] = useState<Assets | null>(null);
@@ -250,7 +250,7 @@ const AIDashboard: React.FC = () => {
         )}
       </div>
 
-      <AIPrimerGUI
+      <AIManagementGUI
         assets={assets}
         processed={processed}
         playertimes={playerTimes}
