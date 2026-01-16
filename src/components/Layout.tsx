@@ -34,8 +34,13 @@ export default function Layout({ children }: LayoutProps) {
           className="bg-dark border-end border-secondary"
         >
           <div className="sidebar">
-            <div className="sidebar-header p-3 border-bottom border-secondary">
-              <h1 className="h4 mb-0 text-gradient">R3E Toolbox</h1>
+            <div className="sidebar-header border-bottom border-secondary text-center">
+              <img
+                src="/logo.png"
+                alt="R3E Toolbox"
+                style={{ maxWidth: "100%", height: "auto", display: "block" }}
+              />
+              <h1 className="h5 mb-2 mt-2 text-gradient">R3E Toolbox</h1>
             </div>
             <Nav className="flex-column p-2">
               {menuItems.map((item) => (

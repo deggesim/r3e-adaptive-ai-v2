@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Card, Container, Form } from "react-bootstrap";
 import type {
   Assets,
   Database,
@@ -369,61 +370,79 @@ const AIDashboard: React.FC = () => {
   }, [downloadXml]);
 
   return (
-    <>
-      <div style={{ textAlign: "center", padding: "20px" }}>
-        <img src="/logo.png" alt="R3E Adaptive AI Logo" />
-      </div>
-      <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
-        <h1>Adaptive AI Management</h1>
-        <p>Upload RaceRoom data files to analyze and configure AI parameters</p>
+    <Container className="py-4">
+      <Card bg="dark" text="white" className="border-secondary mb-4">
+        <Card.Header
+          as="h2"
+          className="text-center"
+          style={{
+            background: "linear-gradient(135deg, #646cff 0%, #535bf2 100%)",
+            color: "white",
+          }}
+        >
+          🤖 AI Management
+        </Card.Header>
+        <Card.Body>
+          <Card.Text className="text-muted mb-4">
+            Upload RaceRoom data files to analyze and configure AI parameters
+          </Card.Text>
 
-        <div style={{ marginTop: "20px" }}>
-          <h2>File Upload</h2>
-          <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
-            <div>
-              <label htmlFor="r3e-data">RaceRoom Data JSON: </label>
-              <input
-                id="r3e-data"
-                type="file"
-                accept=".json"
-                onChange={handleJsonUpload}
-              />
+          <Form>
+            <h5 className="mb-3">File Upload</h5>
+            <div className="row g-3 mb-4">
+              <div className="col-md-6">
+                <Form.Group>
+                  <Form.Label>RaceRoom Data JSON</Form.Label>
+                  <Form.Control
+                    type="file"
+                    accept=".json"
+                    onChange={handleJsonUpload}
+                  />
+                </Form.Group>
+              </div>
+              <div className="col-md-6">
+                <Form.Group>
+                  <Form.Label>AI Adaptation XML</Form.Label>
+                  <Form.Control
+                    type="file"
+                    accept=".xml"
+                    onChange={handleXmlUpload}
+                    ref={xmlInputRef}
+                  />
+                </Form.Group>
+              </div>
             </div>
-            <div>
-              <label htmlFor="ai-adaptation-xml">AI Adaptation XML: </label>
-              <input
-                id="ai-adaptation-xml"
-                type="file"
-                accept=".xml"
-                onChange={handleXmlUpload}
-                ref={xmlInputRef}
-              />
-            </div>
-          </div>
 
-          {assets && (
-            <div>
-              <p>
-                Loaded {assets.numClasses} classes and {assets.numTracks} tracks
-              </p>
-              <p>
-                Database contains {Object.keys(database.classes).length} classes
-                with AI data
-              </p>
-            </div>
-          )}
-        </div>
+            {assets && (
+              <Card bg="dark" className="border-secondary mb-4">
+                <Card.Body>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong>Loaded:</strong> {assets.numClasses} classes and{" "}
+                      {assets.numTracks} tracks
+                    </div>
+                    <div>
+                      <strong>Database:</strong>{" "}
+                      {Object.keys(database.classes).length} classes with AI
+                      data
+                    </div>
+                  </div>
+                </Card.Body>
+              </Card>
+            )}
+          </Form>
 
-        <AIManagementGUI
-          assets={assets}
-          processed={processed}
-          playertimes={playerTimes}
-          onApplyClick={handleApplyClick}
-          onRemoveGenerated={handleRemoveGenerated}
-          onResetAll={handleResetAll}
-        />
-      </div>
-    </>
+          <AIManagementGUI
+            assets={assets}
+            processed={processed}
+            playertimes={playerTimes}
+            onApplyClick={handleApplyClick}
+            onRemoveGenerated={handleRemoveGenerated}
+            onResetAll={handleResetAll}
+          />
+        </Card.Body>
+      </Card>
+    </Container>
   );
 };
 
