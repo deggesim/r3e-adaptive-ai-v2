@@ -1,107 +1,45 @@
-.layout {
-  display: flex;
-  min-height: 100vh;
-  background-color: #242424;
-}
-
+/* Custom styles for sidebar */
 .sidebar {
-  width: 250px;
-  background-color: #1a1a1a;
-  border-right: 1px solid #333;
-  display: flex;
-  flex-direction: column;
-  position: fixed;
   height: 100vh;
-  left: 0;
+  position: sticky;
   top: 0;
 }
 
-.sidebar-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #333;
-}
-
-.sidebar-header h1 {
-  font-size: 1.5rem;
-  margin: 0;
+.text-gradient {
   background: linear-gradient(135deg, #646cff 0%, #535bf2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-.sidebar-nav {
-  flex: 1;
-  padding: 1rem 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  font-weight: bold;
 }
 
 .menu-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1.5rem;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  font-size: 0.95rem;
-  text-align: left;
+  color: rgba(255, 255, 255, 0.85) !important;
+  padding: 0.875rem 1rem !important;
+  margin: 0.25rem 0 !important;
   transition: all 0.2s ease;
   border-left: 3px solid transparent;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
 }
 
 .menu-item.active {
-  background-color: rgba(100, 108, 255, 0.1);
-  color: #646cff;
-  border-left-color: #646cff;
+  background-color: rgba(100, 108, 255, 0.2) !important;
+  color: #8b92ff !important;
+  border-left-color: #8b92ff;
 }
 
-.menu-icon {
-  font-size: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-}
-
-.menu-label {
-  flex: 1;
+.main-content-col {
+  background-color: #212529;
+  overflow-y: auto;
+  height: 100vh;
 }
 
 .main-content {
-  flex: 1;
-  margin-left: 250px;
-  padding: 2rem;
-  max-width: calc(100% - 250px);
-  box-sizing: border-box;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  .sidebar {
-    width: 200px;
-  }
-
-  .main-content {
-    margin-left: 200px;
-    max-width: calc(100% - 200px);
-    padding: 1rem;
-  }
-
-  .sidebar-header h1 {
-    font-size: 1.25rem;
-  }
-
-  .menu-item {
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-  }
+  min-height: 100%;
 }
