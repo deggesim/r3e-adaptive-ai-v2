@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import type { Assets, ProcessedDatabase, PlayerTimes } from "../types";
 import { makeTime, computeTime } from "../utils/timeUtils";
-import { CFG } from "../config";
+import { useConfigStore } from "../store/configStore";
 
 interface AIManagementGUIProps {
   assets: Assets | null;
@@ -12,7 +12,7 @@ interface AIManagementGUIProps {
     trackid: string,
     aifrom: number,
     aito: number,
-    aiSpacing: number
+    aiSpacing: number,
   ) => void;
   onRemoveGenerated: () => void;
   onResetAll: () => void;
@@ -26,13 +26,18 @@ const AIManagementGUI: React.FC<AIManagementGUIProps> = ({
   onRemoveGenerated,
   onResetAll,
 }) => {
+  const { config } = useConfigStore();
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedTrackId, setSelectedTrackId] = useState<string>("");
   const [selectedAILevel, setSelectedAILevel] = useState<number | null>(null);
 
-  const aiNumLevels = CFG.aiNumLevels;
+  const aiNumLevels = config.aiNumLevels;
   // User-defined spacing between AI levels (1-5), default 1
-  const [spacing, setSpacing] = useState<number>(CFG.aiSpacing);
+  const [spacing, setSpacing] = useState<number>(config.aiSpacing);
+
+  useEffect(() => {
+    setSpacing(config.aiSpacing);
+  }, [config.aiSpacing]);
 
   const availableClasses = useMemo(
     () =>
@@ -45,7 +50,7 @@ const AIManagementGUI: React.FC<AIManagementGUIProps> = ({
         const playerClass = playertimes?.classes[classAsset.id];
         return classData || playerClass;
       }) || [],
-    [assets, processed, playertimes]
+    [assets, processed, playertimes],
   );
 
   const availableTracks = useMemo(
@@ -62,14 +67,14 @@ const AIManagementGUI: React.FC<AIManagementGUIProps> = ({
         const playerTrack = playerClass?.tracks[trackAsset.id];
         return track || playerTrack;
       }) || [],
-    [assets, processed, playertimes, selectedClassId]
+    [assets, processed, playertimes, selectedClassId],
   );
 
   useEffect(() => {
     if (availableClasses.length > 0) {
       // Check if current selectedClassId is still available
       const isCurrentAvailable = availableClasses.some(
-        (cls) => cls.id === selectedClassId
+        (cls) => cls.id === selectedClassId,
       );
       if (!isCurrentAvailable || !selectedClassId) {
         // Auto-select first available class
@@ -84,7 +89,7 @@ const AIManagementGUI: React.FC<AIManagementGUIProps> = ({
     if (selectedClassId && availableTracks.length > 0) {
       // Check if current selectedTrackId is still available
       const isCurrentAvailable = availableTracks.some(
-        (track) => track.id === selectedTrackId
+        (track) => track.id === selectedTrackId,
       );
       if (!isCurrentAvailable || !selectedTrackId) {
         // Auto-select first available track
@@ -114,18 +119,18 @@ const AIManagementGUI: React.FC<AIManagementGUIProps> = ({
 
   const aifrom = selectedAILevel
     ? Math.max(
-        CFG.minAI,
-        selectedAILevel - Math.floor(aiNumLevels / 2) * spacing
+        config.minAI,
+        selectedAILevel - Math.floor(aiNumLevels / 2) * spacing,
       )
-    : CFG.minAI;
-  const aito = Math.min(CFG.maxAI, aifrom + (aiNumLevels - 1) * spacing);
+    : config.minAI;
+  const aito = Math.min(config.maxAI, aifrom + (aiNumLevels - 1) * spacing);
 
   const handleApply = () => {
     if (selectedClassId && selectedTrackId && selectedAILevel !== null) {
       const shouldApply = confirm(
         `Apply modification:\n\n${assets!.classes[selectedClassId].name} - ${
           assets!.tracks[selectedTrackId].name
-        }\nAI Range: ${aifrom} - ${aito} (step: ${spacing})\n\nThis will download the modified aiadaptation.xml file.`
+        }\nAI Range: ${aifrom} - ${aito} (step: ${spacing})\n\nThis will download the modified aiadaptation.xml file.`,
       );
 
       if (shouldApply) {
@@ -375,7 +380,7 @@ const AIManagementGUI: React.FC<AIManagementGUIProps> = ({
               setSpacing(
                 Number.isFinite(val)
                   ? Math.min(5, Math.max(1, Math.floor(val)))
-                  : 1
+                  : 1,
               );
             }}
           />

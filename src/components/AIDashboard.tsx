@@ -13,6 +13,7 @@ import { processDatabase } from "../utils/databaseProcessor";
 import { parseJson } from "../utils/jsonParser";
 import { buildXML } from "../utils/xmlBuilder";
 import { parseAdaptive } from "../utils/xmlParser";
+import { useConfigStore } from "../store/configStore";
 
 import AIManagementGUI from "./AIManagementGUI";
 
@@ -56,7 +57,7 @@ function recalculateTrackMinMax(track: DatabaseTrack): void {
  */
 function recalculateClassMinMax(classData: DatabaseClass): void {
   const allTrackAIs = Object.values(classData.tracks).flatMap((t) =>
-    Object.keys(t.ailevels).map(Number)
+    Object.keys(t.ailevels).map(Number),
   );
   if (allTrackAIs.length > 0) {
     classData.minAI = Math.min(...allTrackAIs);
@@ -72,7 +73,7 @@ function recalculateClassMinMax(classData: DatabaseClass): void {
  */
 function buildRemovalReport(
   perClassTrackCount: Record<string, Record<string, number>>,
-  assets: Assets | null
+  assets: Assets | null,
 ): string[] {
   const lines: string[] = [];
   for (const [classId, tracks] of Object.entries(perClassTrackCount)) {
@@ -86,6 +87,7 @@ function buildRemovalReport(
 }
 
 const AIDashboard: React.FC = () => {
+  const { config } = useConfigStore();
   const [assets, setAssets] = useState<Assets | null>(null);
   const [database, setDatabase] = useState<Database>({ classes: {} });
   const [processed, setProcessed] = useState<ProcessedDatabase>({
@@ -116,7 +118,7 @@ const AIDashboard: React.FC = () => {
         alert("Error generating XML file");
       }
     },
-    [assets]
+    [assets],
   );
 
   useEffect(() => {
@@ -159,7 +161,7 @@ const AIDashboard: React.FC = () => {
         alert("Error parsing JSON file");
       }
     },
-    []
+    [],
   );
 
   const handleXmlUpload = useCallback(
@@ -175,14 +177,13 @@ const AIDashboard: React.FC = () => {
         if (added) {
           setDatabase(newDatabase);
           setPlayerTimes(newPlayerTimes);
-          setProcessed(processDatabase(newDatabase));
         }
       } catch (error) {
         console.error("Error parsing XML:", error);
         alert("Error parsing XML file");
       }
     },
-    [database, playerTimes]
+    [database, playerTimes],
   );
 
   const handleApplyModification = useCallback(
@@ -191,7 +192,7 @@ const AIDashboard: React.FC = () => {
       trackid: string,
       aifrom: number,
       aito: number,
-      aiSpacing: number
+      aiSpacing: number,
     ): Database => {
       // Validate that the track has been processed (fitted) successfully
       if (!processed.classes[classid]?.tracks[trackid]) {
@@ -241,16 +242,15 @@ const AIDashboard: React.FC = () => {
       // Update min/max AI for the class based on all tracks
       const classData = newDatabase.classes[classid];
       const allTrackAIs = Object.values(classData.tracks).flatMap((t) =>
-        Object.keys(t.ailevels).map(Number)
+        Object.keys(t.ailevels).map(Number),
       );
       classData.minAI = Math.min(...allTrackAIs);
       classData.maxAI = Math.max(...allTrackAIs);
 
       setDatabase(newDatabase);
-      setProcessed(processDatabase(newDatabase));
       return newDatabase;
     },
-    [database, processed]
+    [database, processed],
   );
 
   const handleRemoveGenerated = useCallback(() => {
@@ -279,8 +279,6 @@ const AIDashboard: React.FC = () => {
     }
 
     setDatabase(newDatabase);
-    const newProcessed = processDatabase(newDatabase);
-    setProcessed(newProcessed);
 
     // Build and display detailed report
     const reportLines = buildRemovalReport(perClassTrackCount, assets);
@@ -290,7 +288,7 @@ const AIDashboard: React.FC = () => {
     } else {
       alert(
         `Removed ${removedCount} generated AI levels` +
-          (reportLines.length ? `\n\nDetails:\n${reportLines.join("\n")}` : "")
+          (reportLines.length ? `\n\nDetails:\n${reportLines.join("\n")}` : ""),
       );
     }
 
@@ -308,7 +306,7 @@ const AIDashboard: React.FC = () => {
       trackid: string,
       aifrom: number,
       aito: number,
-      aiSpacing: number
+      aiSpacing: number,
     ) => {
       // Get the updated database from handleApplyModification
       const updatedDb = handleApplyModification(
@@ -316,7 +314,7 @@ const AIDashboard: React.FC = () => {
         trackid,
         aifrom,
         aito,
-        aiSpacing
+        aiSpacing,
       );
 
       // Generate and download the XML file
@@ -325,7 +323,7 @@ const AIDashboard: React.FC = () => {
           const xmlContent = buildXML(
             updatedDb,
             playerTimes || { classes: {} },
-            assets
+            assets,
           );
           const blob = new Blob([xmlContent], { type: "application/xml" });
           const url = URL.createObjectURL(blob);
@@ -342,14 +340,14 @@ const AIDashboard: React.FC = () => {
         }
       }
     },
-    [assets, playerTimes, handleApplyModification]
+    [assets, playerTimes, handleApplyModification],
   );
 
   const handleResetAll = useCallback(() => {
     // Confirm destructive action before proceeding
     if (
       !confirm(
-        "Are you sure you want to reset all AI times? This action cannot be undone."
+        "Are you sure you want to reset all AI times? This action cannot be undone.",
       )
     ) {
       return;
@@ -368,6 +366,10 @@ const AIDashboard: React.FC = () => {
       xmlInputRef.current.value = "";
     }
   }, [downloadXml]);
+
+  useEffect(() => {
+    setProcessed(processDatabase(database));
+  }, [config, database]);
 
   return (
     <Container className="py-4">

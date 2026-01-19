@@ -14,3 +14,5 @@ export const CFG = {
   aiNumLevels: 5, // Number of AI levels to apply around the selected level
   aiSpacing: 1, // Step between AI levels when applying changes
 };
+
+export type Config = typeof CFG;

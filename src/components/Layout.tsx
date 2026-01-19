@@ -21,6 +21,7 @@ const menuItems: MenuItemData[] = [
     label: "Build Results Database",
     icon: "📊",
   },
+  { path: "/settings", label: "Settings", icon: "⚙️" },
 ];
 
 export default function Layout({ children }: LayoutProps) {
