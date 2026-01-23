@@ -26,6 +26,16 @@ function millisecondsToTime(ms: number): string {
   return formatTime(ms / 1000);
 }
 
+function resolveClassInfo(vehicleId: number | undefined, gameData: RaceRoomData): { classId?: number; className?: string } {
+  if (!vehicleId || !gameData.cars) return {};
+  const car = gameData.cars[String(vehicleId)];
+  if (!car || !car.Class) return {};
+  const classId = car.Class;
+  const classData = gameData.classes?.[String(classId)];
+  const className = classData?.Name;
+  return { classId, className };
+}
+
 function buildTrackLookup(data: RaceRoomData): {
   byName: Map<string, TrackInfo>;
   byId: Map<number, TrackInfo>;
@@ -121,6 +131,9 @@ function parseMultiplayerResult(
         Driver: driver,
         Vehicle: vehicle,
         VehicleId: String(player.CarId || ""),
+        UserId: player.UserId ? Number(player.UserId) : undefined,
+        ClassName: player.ClassName,
+        ClassId: player.ClassId,
         Team: team,
         FinishTime: totalTime,
         TotalTime: totalTime,
@@ -133,6 +146,18 @@ function parseMultiplayerResult(
   };
 
   const slots1 = processSession(sessRace);
+
+  // Resolve class info from vehicle IDs if not available
+  for (const slot of slots1) {
+    if (!slot.ClassName && !slot.ClassId && slot.VehicleId) {
+      const { classId, className } = resolveClassInfo(
+        parseInt(slot.VehicleId, 10),
+        gameData,
+      );
+      if (classId) slot.ClassId = classId;
+      if (className) slot.ClassName = className;
+    }
+  }
 
   // Add qualifying times
   if (sessQualify) {
@@ -213,10 +238,25 @@ function parseSinglePlayerResult(
       teamName = driver.name;
     }
 
+    const vehicleId = driver.carId || undefined;
+    const { classId, className } = resolveClassInfo(vehicleId, gameData);
+
+    const rawUserId =
+      driver.userId ?? driver.UserId ?? (driver as any).userid ?? undefined;
+    const userId =
+      typeof rawUserId === "string"
+        ? Number(rawUserId)
+        : typeof rawUserId === "number"
+          ? rawUserId
+          : undefined;
+
     slots.push({
       Driver: driver.name,
       Vehicle: driver.carName || String(driver.carId || ""),
       VehicleId: String(driver.carId || ""),
+      UserId: Number.isFinite(userId) ? userId : undefined,
+      ClassName: driver.className || driver.ClassName || className,
+      ClassId: driver.classId ?? driver.ClassId ?? classId,
       Team: teamName,
       FinishTime: totalTime,
       TotalTime: totalTime,

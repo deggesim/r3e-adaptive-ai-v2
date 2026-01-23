@@ -5,6 +5,9 @@ export interface RaceSlot {
   Team: string;
   Vehicle: string;
   VehicleId?: string;
+  UserId?: number;
+  ClassName?: string;
+  ClassId?: number;
   FinishTime?: string;
   TotalTime?: string;
   BestLap?: string;
@@ -49,7 +52,8 @@ export interface SinglePlayerRaceResult {
     layoutId?: number;
   };
   drivers: Array<{
-    userId: string;
+    userId?: string | number;
+    UserId?: string | number;
     name: string;
     teamId?: number;
     teamName?: string;

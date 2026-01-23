@@ -59,6 +59,15 @@ export interface LeaderboardAssets {
   tracks: LeaderboardAsset[];
 }
 
+export interface ChampionshipEntry {
+  alias: string;
+  fileName: string;
+  races: number;
+  generatedAt: string;
+  carName?: string;
+  carIcon?: string;
+}
+
 export interface AITimeEntry {
   aiSkill: number;
   averagedLapTime: number;

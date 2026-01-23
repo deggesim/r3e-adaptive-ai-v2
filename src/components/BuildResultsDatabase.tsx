@@ -17,9 +17,14 @@ import {
   fetchLeaderboardAssets,
   fetchLeaderboardAssetsWithCache,
 } from "../utils/leaderboardAssets";
+import { useChampionshipStore } from "../store/championshipStore";
 import { useLeaderboardAssetsStore } from "../store/leaderboardAssetsStore";
 import { parseResultFiles } from "../utils/raceResultParser";
-import { generateStandingsHTML, downloadHTML } from "../utils/htmlGenerator";
+import {
+  generateStandingsHTML,
+  generateChampionshipIndexHTML,
+  downloadHTML,
+} from "../utils/htmlGenerator";
 
 function SectionTitle({ label }: { readonly label: string }) {
   return (
@@ -171,6 +176,10 @@ export default function BuildResultsDatabase() {
   // Use store to read cached assets
   const cachedAssets = useLeaderboardAssetsStore((state) => state.assets);
   const clearAssets = useLeaderboardAssetsStore((state) => state.clearAssets);
+  const championships = useChampionshipStore((state) => state.championships);
+  const addOrUpdateChampionship = useChampionshipStore(
+    (state) => state.addOrUpdate,
+  );
 
   const resultsSummary = useMemo(() => {
     if (resultFiles.length === 0) return "No files selected";
@@ -209,6 +218,26 @@ export default function BuildResultsDatabase() {
     }
   }, [cachedAssets]);
 
+  // Prefill championship alias using the first class name, falling back to vehicle
+  useEffect(() => {
+    if (championshipAlias.trim() || parsedRaces.length === 0) return;
+    const firstClass = parsedRaces
+      .map((race) =>
+        race.slots.find((slot) => slot.ClassName?.trim())?.ClassName?.trim(),
+      )
+      .find(Boolean);
+
+    if (firstClass) {
+      setChampionshipAlias(`${firstClass} Championship`);
+      return;
+    }
+
+    const firstVehicle = parsedRaces[0]?.slots?.[0]?.Vehicle;
+    if (firstVehicle) {
+      setChampionshipAlias(`${firstVehicle} Championship`);
+    }
+  }, [championshipAlias, parsedRaces]);
+
   const handleAssetsDownload = useCallback(async () => {
     setIsLoadingAssets(true);
     setAssetsError(null);
@@ -242,6 +271,7 @@ export default function BuildResultsDatabase() {
     async (event: React.ChangeEvent<HTMLInputElement>) => {
       const files = event.target.files ? Array.from(event.target.files) : [];
       setResultFiles(files);
+      setChampionshipAlias(""); // Reset alias when files are selected
 
       // Parse races immediately when files are selected
       if (files.length > 0 && gameData) {
@@ -260,6 +290,40 @@ export default function BuildResultsDatabase() {
     },
     [gameData],
   );
+
+  const resolveCarInfo = useCallback(() => {
+    const humanSlot = parsedRaces
+      .flatMap((race) => race.slots)
+      .find((slot) => typeof slot.UserId === "number" && slot.UserId > 0);
+
+    const fallbackSlot = parsedRaces[0]?.slots?.find(
+      (slot) => slot.ClassName || slot.Vehicle,
+    );
+
+    const slot = humanSlot || fallbackSlot;
+    if (!slot) return { carName: undefined, carIcon: undefined };
+
+    const carName = slot.ClassName || slot.Vehicle;
+    let carIcon: string | undefined;
+
+    if (assets) {
+      const assetMap = convertAssetsForHTML(assets);
+      if (assetMap?.classes) {
+        const keyCandidates = [
+          slot.ClassName,
+          slot.ClassId ? String(slot.ClassId) : undefined,
+        ].filter(Boolean) as string[];
+        for (const key of keyCandidates) {
+          if (assetMap.classes[key]) {
+            carIcon = assetMap.classes[key];
+            break;
+          }
+        }
+      }
+    }
+
+    return { carName, carIcon };
+  }, [assets, parsedRaces]);
 
   return (
     <Container className="py-4">
@@ -478,19 +542,46 @@ export default function BuildResultsDatabase() {
                 size="lg"
                 onClick={() => {
                   if (parsedRaces.length > 0 && championshipAlias) {
+                    const aliasTrimmed = championshipAlias.trim();
+                    const fileName = `${aliasTrimmed}.html`;
                     const html = generateStandingsHTML(
                       parsedRaces,
-                      championshipAlias,
+                      aliasTrimmed,
                       convertAssetsForHTML(assets),
                       gameData,
                     );
-                    downloadHTML(html, `${championshipAlias}.html`);
+                    downloadHTML(html, fileName);
+
+                    const { carName, carIcon } = resolveCarInfo();
+
+                    addOrUpdateChampionship({
+                      alias: aliasTrimmed,
+                      fileName,
+                      races: parsedRaces.length,
+                      generatedAt: new Date().toISOString(),
+                      carName,
+                      carIcon,
+                    });
                   }
                 }}
                 disabled={parsedRaces.length === 0 || !championshipAlias}
                 className="w-100"
               >
                 Download HTML Standings
+              </Button>
+              <Button
+                variant="outline-info"
+                size="lg"
+                className="w-100 mt-2"
+                onClick={() => {
+                  if (championships.length > 0) {
+                    const html = generateChampionshipIndexHTML(championships);
+                    downloadHTML(html, "index.html");
+                  }
+                }}
+                disabled={championships.length === 0}
+              >
+                Download index.html (all championships)
               </Button>
             </Col>
           </Row>

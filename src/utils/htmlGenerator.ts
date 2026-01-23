@@ -1,3 +1,4 @@
+import type { ChampionshipEntry } from "../types";
 import type { ParsedRace, RaceSlot } from "../types/raceResults";
 
 interface DriverStanding {
@@ -5,6 +6,7 @@ interface DriverStanding {
   driver: string;
   vehicle: string;
   vehicleId?: string;
+   isHuman: boolean;
   team: string;
   points: number;
   raceResults: (number | null)[];
@@ -32,6 +34,7 @@ interface BestTime {
   driver: string;
   vehicle: string;
   vehicleId?: string;
+   isHuman: boolean;
   time: string;
   timeMs: number;
 }
@@ -80,6 +83,7 @@ function calculateDriverStandings(races: ParsedRace[]): DriverStanding[] {
     {
       vehicle: string;
       vehicleId?: string;
+      isHuman: boolean;
       team: string;
       raceResults: (number | null)[];
       racePoints: (number | null)[];
@@ -92,10 +96,16 @@ function calculateDriverStandings(races: ParsedRace[]): DriverStanding[] {
         driverMap.set(slot.Driver, {
           vehicle: slot.Vehicle,
           vehicleId: slot.VehicleId,
+          isHuman: !!(typeof slot.UserId === "number" && slot.UserId > 0),
           team: slot.Team,
           raceResults: [],
           racePoints: [],
         });
+      } else {
+        const entry = driverMap.get(slot.Driver)!;
+        if (!entry.isHuman && typeof slot.UserId === "number" && slot.UserId > 0) {
+          entry.isHuman = true;
+        }
       }
     }
   }
@@ -128,6 +138,7 @@ function calculateDriverStandings(races: ParsedRace[]): DriverStanding[] {
       points,
       raceResults: data.raceResults,
       racePoints: data.racePoints,
+      isHuman: data.isHuman,
     });
   });
 
@@ -261,6 +272,7 @@ function getBestLapTimes(races: ParsedRace[], topN: number = 20): BestTime[][] {
         driver: s.Driver,
         vehicle: s.Vehicle,
         vehicleId: s.VehicleId,
+        isHuman: !!(typeof s.UserId === "number" && s.UserId > 0),
         time: s.BestLap!,
         timeMs: parseTime(s.BestLap!) * 1000,
       }))
@@ -281,6 +293,7 @@ function getBestQualifyingTimes(
         driver: s.Driver,
         vehicle: s.Vehicle,
         vehicleId: s.VehicleId,
+        isHuman: !!(typeof s.UserId === "number" && s.UserId > 0),
         time: s.QualTime!,
         timeMs: parseTime(s.QualTime!) * 1000,
       }))
@@ -339,6 +352,7 @@ tbody tr:hover { background-color: #ecf0f1; }
 .driver-name { text-align: left; font-weight: 600; }
 .vehicle-name, .team-name { text-align: left; font-size: 0.9em; }
 .vehicle-icon { height: auto; vertical-align: middle; margin-right: 5px; }
+.human-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 2px 6px; border-radius: 999px; background: #16a085; color: white; font-size: 0.75em; font-weight: 700; text-transform: uppercase; }
 .time-diff { color: #e74c3c; font-size: 0.85em; display: block; }
 .minor { color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; }
 </style>
@@ -384,9 +398,12 @@ tbody tr:hover { background-color: #ecf0f1; }
         ? leaderboardAssets.classes[standing.vehicleId]
         : "";
     const displayVehicleName = getVehicleName(standing.vehicleId, standing.vehicle);
+    const humanBadge = standing.isHuman
+      ? '<span class="human-badge">Human</span>'
+      : "";
     html += `\n<tr${rowClass}>
 <td>${standing.position}</td>
-<td class="driver-name">${standing.driver}</td>
+<td class="driver-name">${standing.driver}${humanBadge}</td>
 <td class="vehicle-name">${vehicleIcon ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" title="${displayVehicleName}"/> ${displayVehicleName}` : displayVehicleName}</td>
 <td class="team-name">${standing.team}</td>
 <td class="points">${standing.points}</td>`;
@@ -532,7 +549,10 @@ tbody tr:hover { background-color: #ecf0f1; }
         const vehicleDisplay = vehicleIcon
           ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" title="${displayVehicleName}"/> ${displayVehicleName}`
           : displayVehicleName;
-        html += `\n<td class="driver-name">${time.driver}<br><span class="vehicle-name">${vehicleDisplay}</span><br>${time.time}${diffHtml}</td>`;
+        const humanBadge = time.isHuman
+          ? '<span class="human-badge">Human</span>'
+          : "";
+        html += `\n<td class="driver-name">${time.driver}${humanBadge}<br><span class="vehicle-name">${vehicleDisplay}</span><br>${time.time}${diffHtml}</td>`;
       } else {
         html += `\n<td>-</td>`;
       }
@@ -583,7 +603,10 @@ tbody tr:hover { background-color: #ecf0f1; }
         const vehicleDisplay = vehicleIcon
           ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" title="${displayVehicleName}"/> ${displayVehicleName}`
           : displayVehicleName;
-        html += `\n<td class="driver-name">${time.driver}<br><span class="vehicle-name">${vehicleDisplay}</span><br>${time.time}${diffHtml}</td>`;
+        const humanBadge = time.isHuman
+          ? '<span class="human-badge">Human</span>'
+          : "";
+        html += `\n<td class="driver-name">${time.driver}${humanBadge}<br><span class="vehicle-name">${vehicleDisplay}</span><br>${time.time}${diffHtml}</td>`;
       } else {
         html += `\n<td>-</td>`;
       }
@@ -630,7 +653,10 @@ tbody tr:hover { background-color: #ecf0f1; }
         else if (pos === 2) posClass = ' class="pos2"';
         else if (pos === 3) posClass = ' class="pos3"';
 
-        html += `\n<td${posClass} class="driver-name">${driver.driver}</td>`;
+        const humanBadge = driver.isHuman
+          ? '<span class="human-badge">Human</span>'
+          : "";
+        html += `\n<td${posClass} class="driver-name">${driver.driver}${humanBadge}</td>`;
       } else {
         html += `\n<td>-</td>`;
       }
@@ -647,6 +673,157 @@ tbody tr:hover { background-color: #ecf0f1; }
 </html>`;
 
   return html;
+}
+
+export function generateChampionshipIndexHTML(
+  championships: ChampionshipEntry[],
+): string {
+  const sorted = [...championships].sort((a, b) =>
+    b.generatedAt.localeCompare(a.generatedAt),
+  );
+
+  const rows = sorted
+    .map((c, idx) => {
+      const date = new Date(c.generatedAt);
+      const formattedDate = date.toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      const rowClass = idx % 2 === 0 ? "even" : "odd";
+
+      const carCell = c.carName
+        ? `<div class="car-cell">
+            ${c.carIcon ? `<img src="${c.carIcon}" alt="${c.carName || "Car icon"}" />` : ""}
+            <span>${c.carName}</span>
+          </div>`
+        : "-";
+
+      return `<tr class="${rowClass}">
+  <td class="alias"><a href="./${encodeURIComponent(
+    c.fileName,
+  )}" target="_blank" rel="noopener noreferrer">${c.alias}</a></td>
+  <td class="car">${carCell}</td>
+  <td class="races">${c.races}</td>
+  <td class="date">${formattedDate}</td>
+</tr>`;
+    })
+    .join("\n");
+
+  const emptyState = `<tr><td colspan="4" class="empty">No championships exported yet.</td></tr>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Championship Index</title>
+  <style>
+    :root {
+      --bg: #0b1021;
+      --card: #141a33;
+      --text: #f7f8ff;
+      --muted: #a9b1d6;
+      --accent: #7aa2f7;
+      --border: #1f2747;
+      --row-even: #11182d;
+    }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 20% 20%, #101732, #0b1021 40%),
+                  radial-gradient(circle at 80% 0%, #122349, #0b1021 30%),
+                  #0b1021;
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      overflow: hidden;
+    }
+    header {
+      padding: 24px 28px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(122,162,247,0.12), rgba(122,162,247,0));
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      letter-spacing: 0.5px;
+    }
+    p.subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.9rem;
+      background: #0f152b;
+    }
+    tr.even { background: var(--row-even); }
+    tr:hover { background: rgba(122,162,247,0.08); }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    a:hover { text-decoration: underline; }
+    td.alias { width: 45%; }
+    td.car { width: 20%; color: var(--muted); }
+    td.car .car-cell { display: inline-flex; align-items: center; gap: 10px; }
+    td.car img { width: 28px; height: 28px; object-fit: contain; border-radius: 6px; background: #0f152b; padding: 4px; border: 1px solid var(--border); }
+    td.car span { color: var(--text); font-weight: 600; }
+    td.races { width: 15%; color: var(--muted); }
+    td.date { width: 20%; color: var(--muted); }
+    td.empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Championship Index</h1>
+      <p class="subtitle">Links to exported standings (save all files in the same folder).</p>
+    </header>
+    <table>
+      <thead>
+        <tr>
+          <th>Championship</th>
+          <th>Car</th>
+          <th>Races</th>
+          <th>Generated</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || emptyState}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>`;
 }
 
 export function downloadHTML(html: string, filename: string): void {
