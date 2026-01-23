@@ -10,12 +10,12 @@ import {
   ListGroup,
   Row,
   Spinner,
-  Table,
 } from "react-bootstrap";
 import type { LeaderboardAssets, RaceRoomData } from "../types";
 import type { ParsedRace } from "../types/raceResults";
 import { fetchLeaderboardAssets } from "../utils/leaderboardAssets";
 import { parseResultFiles } from "../utils/raceResultParser";
+import { generateStandingsHTML, downloadHTML } from "../utils/htmlGenerator";
 
 function SectionTitle({ label }: { readonly label: string }) {
   return (
@@ -27,6 +27,27 @@ function SectionTitle({ label }: { readonly label: string }) {
       <h3 className="h5 m-0 text-uppercase text-white-50">{label}</h3>
     </div>
   );
+}
+
+function convertAssetsForHTML(assets: LeaderboardAssets | null) {
+  if (!assets) return undefined;
+
+  const classesMap: Record<string, string> = {};
+  const tracksMap: Record<string, string> = {};
+
+  assets.classes.forEach((c) => {
+    // Index by both name and ID
+    classesMap[c.name] = c.iconUrl || "";
+    classesMap[c.id] = c.iconUrl || "";
+  });
+
+  assets.tracks.forEach((t) => {
+    // Index by both name and ID
+    tracksMap[t.name] = t.iconUrl || "";
+    tracksMap[t.id] = t.iconUrl || "";
+  });
+
+  return { classes: classesMap, tracks: tracksMap };
 }
 
 function AssetListItem({
@@ -141,18 +162,10 @@ export default function BuildResultsDatabase() {
   const [isParsingRaces, setIsParsingRaces] = useState(false);
   const [gameData, setGameData] = useState<RaceRoomData | null>(null);
 
-  const resultFolder = useMemo(() => {
-    const first = resultFiles[0]?.webkitRelativePath;
-    return first ? first.split("/")[0] : "";
-  }, [resultFiles]);
-
   const resultsSummary = useMemo(() => {
     if (resultFiles.length === 0) return "No files selected";
-    return (
-      `${resultFiles.length} result file${resultFiles.length > 1 ? "s" : ""}` +
-      (resultFolder ? ` from ${resultFolder}` : "")
-    );
-  }, [resultFiles.length, resultFolder]);
+    return `${resultFiles.length} result file${resultFiles.length > 1 ? "s" : ""} selected`;
+  }, [resultFiles.length]);
 
   // Load game data for parsing
   useEffect(() => {
@@ -316,18 +329,19 @@ export default function BuildResultsDatabase() {
           <SectionTitle label="Step 2 · Results source and alias" />
           <Row className="g-3">
             <Col lg={6}>
-              <Form.Group controlId="resultsFolder" className="mb-3">
+              <Form.Group controlId="resultsFiles" className="mb-3">
                 <Form.Label className="text-white">
-                  RaceRoom results folder
+                  RaceRoom result files
                 </Form.Label>
                 <Form.Control
                   type="file"
                   multiple
-                  {...({ webkitdirectory: "" } as any)}
+                  accept=".txt,.json"
                   onChange={handleFolderChange}
                 />
                 <Form.Text className="text-white-50">
-                  Suggested: UserData/Log/Results or dedicated exports.
+                  Select one or more Race*.txt or Race*.json files (supports
+                  Race1.txt, Race2.txt, etc.)
                 </Form.Text>
               </Form.Group>
               <Alert variant="secondary" className="py-2 mb-3">
@@ -369,43 +383,31 @@ export default function BuildResultsDatabase() {
                 <Card bg="secondary" text="white">
                   <Card.Body>
                     <Card.Title className="h6 mb-3">
-                      Parsed Races Preview
+                      Championship Standings Preview
                     </Card.Title>
                     <div
                       style={{
-                        maxHeight: "300px",
+                        maxHeight: "600px",
                         overflowY: "auto",
+                        background: "white",
+                        borderRadius: "4px",
                       }}
                     >
-                      <Table striped bordered hover variant="dark" size="sm">
-                        <thead>
-                          <tr>
-                            <th>Date</th>
-                            <th>Track</th>
-                            <th>Drivers</th>
-                            <th>Winner</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {parsedRaces.slice(0, 10).map((race) => (
-                            <tr key={`${race.timestring}-${race.trackname}`}>
-                              <td className="small">{race.timestring}</td>
-                              <td className="small">{race.trackname}</td>
-                              <td className="text-center">
-                                {race.slots.length}
-                              </td>
-                              <td className="small">
-                                {race.slots[0]?.Driver || "-"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </Table>
-                      {parsedRaces.length > 10 && (
-                        <p className="text-center text-white-50 small mb-0">
-                          ... and {parsedRaces.length - 10} more races
-                        </p>
-                      )}
+                      <iframe
+                        key={`preview-${assets?.classes.length || 0}-${parsedRaces.length}`}
+                        title="Standings Preview"
+                        srcDoc={generateStandingsHTML(
+                          parsedRaces,
+                          championshipAlias || "Championship",
+                          convertAssetsForHTML(assets),
+                          gameData,
+                        )}
+                        style={{
+                          width: "100%",
+                          height: "580px",
+                          border: "none",
+                        }}
+                      />
                     </div>
                   </Card.Body>
                 </Card>
@@ -415,12 +417,47 @@ export default function BuildResultsDatabase() {
 
           <hr className="my-4 border-secondary" />
           <SectionTitle label="Step 3 · Archive export" />
-          <p className="text-white-50 mb-0">
-            In this step we will generate the HTML/JSON archive with standings
-            and results database, replicating the logic of
-            r3e-open-championship. It will be enabled after completing the
-            previous steps.
-          </p>
+          <Row className="g-3">
+            <Col lg={8}>
+              <p className="text-white-50 mb-3">
+                Generate the HTML/JSON archive with standings and results
+                database, replicating the logic of r3e-open-championship. The
+                export will include driver standings, best lap times, and race
+                results.
+              </p>
+            </Col>
+            <Col lg={4}>
+              <Button
+                variant="success"
+                size="lg"
+                onClick={() => {
+                  if (parsedRaces.length > 0 && championshipAlias) {
+                    const html = generateStandingsHTML(
+                      parsedRaces,
+                      championshipAlias,
+                      convertAssetsForHTML(assets),
+                      gameData,
+                    );
+                    downloadHTML(html, `${championshipAlias}.html`);
+                  }
+                }}
+                disabled={parsedRaces.length === 0 || !championshipAlias}
+                className="w-100"
+              >
+                Download HTML Standings
+              </Button>
+            </Col>
+          </Row>
+          {parsedRaces.length === 0 && (
+            <Alert variant="info" className="mt-3">
+              ℹ️ Select a results folder in Step 2 to enable export.
+            </Alert>
+          )}
+          {parsedRaces.length > 0 && !championshipAlias && (
+            <Alert variant="info" className="mt-3">
+              ℹ️ Enter a championship alias in Step 2 to enable export.
+            </Alert>
+          )}
         </Card.Body>
       </Card>
     </Container>

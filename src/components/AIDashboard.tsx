@@ -385,7 +385,7 @@ const AIDashboard: React.FC = () => {
           🤖 AI Management
         </Card.Header>
         <Card.Body>
-          <Card.Text className="text-muted mb-4">
+          <Card.Text className="text-white-50 mb-4">
             Upload RaceRoom data files to analyze and configure AI parameters
           </Card.Text>
 

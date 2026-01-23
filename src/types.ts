@@ -15,9 +15,16 @@ export interface RaceRoomTrack {
   }>;
 }
 
+export interface RaceRoomTeam {
+  Type: string;
+  Name: string;
+  Id: number;
+}
+
 export interface RaceRoomData {
   classes: Record<string, RaceRoomClass>;
   tracks: Record<string, RaceRoomTrack>;
+  teams?: Record<string, RaceRoomTeam>;
 }
 
 export interface TrackAsset {

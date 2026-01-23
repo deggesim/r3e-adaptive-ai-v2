@@ -108,7 +108,7 @@ function parseMultiplayerResult(
     for (const player of session.Players) {
       const driver = player.Username;
       const vehicle = player.CarName || String(player.CarId || "");
-      const team = player.Team || "";
+      const team = player.Team || driver;
 
       const totalTime = player.TotalTime
         ? millisecondsToTime(player.TotalTime)
@@ -120,6 +120,7 @@ function parseMultiplayerResult(
       slots.push({
         Driver: driver,
         Vehicle: vehicle,
+        VehicleId: String(player.CarId || ""),
         Team: team,
         FinishTime: totalTime,
         TotalTime: totalTime,
@@ -201,10 +202,22 @@ function parseSinglePlayerResult(
       ? millisecondsToTime(driver.qualTimeMs)
       : undefined;
 
+    // Resolve team name from teamId if available
+    let teamName = driver.teamName || "";
+    if (!teamName && driver.teamId && gameData.teams) {
+      const team = gameData.teams[String(driver.teamId)];
+      teamName = team?.Name || "";
+    }
+    // Fallback to driver name if team is still empty
+    if (!teamName) {
+      teamName = driver.name;
+    }
+
     slots.push({
       Driver: driver.name,
       Vehicle: driver.carName || String(driver.carId || ""),
-      Team: driver.teamName || "",
+      VehicleId: String(driver.carId || ""),
+      Team: teamName,
       FinishTime: totalTime,
       TotalTime: totalTime,
       BestLap: bestLap,
@@ -290,20 +303,7 @@ export async function parseResultFiles(
 ): Promise<ParsedRace[]> {
   const allRaces: ParsedRace[] = [];
 
-  // Filter only race files (Race.txt, Race1.txt, Race2.txt - max 2 per event)
-  const raceFiles = files.filter((file) => {
-    const name = file.name.toLowerCase();
-    return (
-      name.endsWith("race.txt") ||
-      name.endsWith("race.json") ||
-      name.endsWith("race1.txt") ||
-      name.endsWith("race1.json") ||
-      name.endsWith("race2.txt") ||
-      name.endsWith("race2.json")
-    );
-  });
-
-  for (const file of raceFiles) {
+  for (const file of files) {
     const races = await parseResultFile(file, gameData, ruleset);
     if (races) {
       races.forEach((race) => {
