@@ -162,6 +162,8 @@ export default function BuildResultsDatabase() {
   const [htmlOverride, setHtmlOverride] = useState("");
   const [resultFiles, setResultFiles] = useState<File[]>([]);
   const [championshipAlias, setChampionshipAlias] = useState("");
+  const [debouncedChampionshipAlias, setDebouncedChampionshipAlias] =
+    useState("");
   const [parsedRaces, setParsedRaces] = useState<ParsedRace[]>([]);
   const [isParsingRaces, setIsParsingRaces] = useState(false);
   const [gameData, setGameData] = useState<RaceRoomData | null>(null);
@@ -174,6 +176,15 @@ export default function BuildResultsDatabase() {
     if (resultFiles.length === 0) return "No files selected";
     return `${resultFiles.length} result file${resultFiles.length > 1 ? "s" : ""} selected`;
   }, [resultFiles.length]);
+
+  // Debounce championship alias to avoid iframe refresh on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedChampionshipAlias(championshipAlias);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [championshipAlias]);
 
   // Load game data for parsing
   useEffect(() => {
@@ -433,7 +444,7 @@ export default function BuildResultsDatabase() {
                         title="Standings Preview"
                         srcDoc={generateStandingsHTML(
                           parsedRaces,
-                          championshipAlias || "Championship",
+                          debouncedChampionshipAlias || "Championship",
                           convertAssetsForHTML(assets),
                           gameData,
                         )}
