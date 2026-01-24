@@ -129,7 +129,6 @@
 }
 
 .vehicle-icon {
-  height: 24px;
   width: auto;
   vertical-align: middle;
   margin-right: 5px;
@@ -172,4 +171,100 @@
 
 .back-button {
   margin-bottom: 20px;
+}
+
+.race-header {
+  font-size: 0.85em;
+  min-width: 150px;
+}
+
+.time-cell {
+  padding: 8px 4px !important;
+  text-align: center;
+}
+
+.time-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.time-driver {
+  font-weight: 600;
+  font-size: 0.85em;
+  color: #fff;
+}
+
+.time-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8em;
+  color: #95a5a6;
+}
+
+.race-result-cell {
+  padding: 8px 4px !important;
+  text-align: center;
+}
+
+.race-result-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  font-size: 0.8em;
+}
+
+.result-driver {
+  font-weight: 600;
+  color: #fff;
+}
+
+.result-vehicle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: #95a5a6;
+}
+
+.result-time {
+  margin-top: 2px;
+}
+
+.result-position {
+  font-weight: 700;
+  font-size: 0.95em;
+  color: #fff;
+}
+
+.race-header {
+  font-size: 0.85em;
+  min-width: 150px;
+}
+
+.time-cell {
+  padding: 8px 4px !important;
+  text-align: center;
+}
+
+.time-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.time-driver {
+  font-weight: 600;
+  color: #fff;
+}
+
+.time-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8em;
+  color: #95a5a6;
 }
