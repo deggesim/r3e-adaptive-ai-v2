@@ -313,11 +313,19 @@ export function generateStandingsHTML(
   leaderboardAssets?: {
     classes: Record<string, string>;
     tracks: Record<string, string>;
+    classNames?: Record<string, string>;
   },
   gameData?: Record<string, any> | null,
 ): string {
   const getVehicleName = (vehicleId?: string, vehicleName?: string): string => {
     if (vehicleName && vehicleName !== vehicleId) return vehicleName;
+    
+    // Try to get name from leaderboard assets first
+    if (vehicleId && leaderboardAssets?.classNames?.[vehicleId]) {
+      return leaderboardAssets.classNames[vehicleId];
+    }
+    
+    // Fallback to gameData
     if (!vehicleId || !gameData?.cars) return vehicleName || vehicleId || "";
     const car = gameData.cars[vehicleId];
     return car?.Name || vehicleName || vehicleId;
@@ -492,8 +500,6 @@ body {
   height: auto;
   vertical-align: middle;
   margin-right: 6px;
-  max-height: 18px;
-  object-fit: contain;
 }
 
 /* Human driver styling - colored text instead of badge */
@@ -601,13 +607,6 @@ body {
   font-size: 0.95em;
   color: #fff;
 }
-
-.vehicle-icon-small {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  margin-right: 4px;
-}
 `;
 
   const driverTable = `
@@ -624,7 +623,7 @@ body {
           ${races
             .map((race) => {
               const trackImg = leaderboardAssets?.tracks[race.trackname] || "";
-              return `<th colspan="2">${trackImg ? `<img src="${trackImg}" alt="${race.trackname}" />` : ""}${race.trackname}${race.timestring ? `<span class="track-time">${race.timestring}</span>` : ""}</th>`;
+              return `<th colspan="2" class="track-header">${trackImg ? `<img src="${trackImg}" alt="${race.trackname}" />` : ""}<div>${race.trackname}</div>${race.timestring ? `<span class="track-time">${race.timestring}</span>` : ""}</th>`;
             })
             .join("")}
         </tr>
@@ -921,7 +920,7 @@ body {
                   return `<td class="race-result-cell">
                     <div class="race-result-entry${isHuman ? " human-driver" : ""}">
                       <div class="result-driver">${slot.Driver}</div>
-                      <div class="result-vehicle">${vehicleIcon ? `<img src="${vehicleIcon}" class="vehicle-icon-small" alt="${displayVehicleName}" />` : ""}<span>${displayVehicleName}</span></div>
+                      <div class="result-vehicle">${vehicleIcon ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" />` : ""}<span>${displayVehicleName}</span></div>
                       <div class="result-time">${slot.TotalTime}</div>
                     </div>
                   </td>`;
@@ -975,13 +974,13 @@ export function generateChampionshipIndexHTML(
   const rows = sorted
     .map((c, idx) => {
       const date = new Date(c.generatedAt);
-      const formattedDate = date.toLocaleString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      const formattedDate = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 
       const rowClass = idx % 2 === 0 ? "even" : "odd";
 

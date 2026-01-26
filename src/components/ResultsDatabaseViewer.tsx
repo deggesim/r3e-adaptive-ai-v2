@@ -64,13 +64,13 @@ function ChampionshipCard({
   };
 
   const generatedDate = new Date(championship.generatedAt);
-  const formattedDate = generatedDate.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const day = String(generatedDate.getDate()).padStart(2, '0');
+  const month = String(generatedDate.getMonth() + 1).padStart(2, '0');
+  const year = generatedDate.getFullYear();
+  const hours = String(generatedDate.getHours()).padStart(2, '0');
+  const minutes = String(generatedDate.getMinutes()).padStart(2, '0');
+  const seconds = String(generatedDate.getSeconds()).padStart(2, '0');
+  const formattedDate = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 
   return (
     <>
@@ -104,7 +104,7 @@ function ChampionshipCard({
               )}
             </div>
             <Button
-              variant="outline-danger"
+              variant="danger"
               size="sm"
               onClick={handleDeleteClick}
               title="Delete championship"
@@ -141,7 +141,7 @@ function ChampionshipCard({
           </ListGroup>
           <div className="d-flex justify-content-end mt-3">
             <Button
-              variant="outline-info"
+              variant="primary"
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
@@ -151,7 +151,7 @@ function ChampionshipCard({
                 !championship.raceData || championship.raceData.length === 0
               }
             >
-              Download HTML
+              ⬇️ Download as HTML
             </Button>
           </div>
         </Card.Body>

@@ -60,6 +60,14 @@ function parseTime(timeStr: string | undefined): number {
   return Infinity;
 }
 
+function formatTimeDiff(baseMs: number, currentMs: number): string {
+  const diff = currentMs - baseMs;
+  if (diff === 0) return "";
+  const sign = diff > 0 ? "+ " : "- ";
+  const absDiff = Math.abs(diff) / 1000;
+  return `${sign}${absDiff.toFixed(3)}`;
+}
+
 function getRacePosition(slots: any[], driver: string): number | null {
   const sortedSlots = [...slots].sort((a, b) => {
     const aFinished = a.FinishStatus === "Finished" || !!a.TotalTime;
@@ -265,7 +273,7 @@ function calculateVehicleStandings(races: any[]): VehicleStanding[] {
   return standings;
 }
 
-function getBestLapTimesPerRace(races: any[], topN = 10): BestTime[][] {
+function getBestLapTimesPerRace(races: any[]): BestTime[][] {
   return races.map((race) => {
     const raceLapTimes: BestTime[] = [];
     const humanDriver = race.slots && race.slots.length > 0 ? race.slots[0].Driver : null;
@@ -287,11 +295,11 @@ function getBestLapTimesPerRace(races: any[], topN = 10): BestTime[][] {
     });
 
     const sorted = [...raceLapTimes].sort((a: BestTime, b: BestTime) => a.timeMs - b.timeMs);
-    return sorted.slice(0, topN);
+    return sorted;
   });
 }
 
-function getBestQualifyingTimesPerRace(races: any[], topN = 10): BestTime[][] {
+function getBestQualifyingTimesPerRace(races: any[]): BestTime[][] {
   return races.map((race) => {
     const raceQualTimes: BestTime[] = [];
     const humanDriver = race.slots && race.slots.length > 0 ? race.slots[0].Driver : null;
@@ -313,7 +321,7 @@ function getBestQualifyingTimesPerRace(races: any[], topN = 10): BestTime[][] {
     });
 
     const sorted = [...raceQualTimes].sort((a: BestTime, b: BestTime) => a.timeMs - b.timeMs);
-    return sorted.slice(0, topN);
+    return sorted;
   });
 }
 
@@ -411,13 +419,13 @@ export default function ResultsDatabaseDetail() {
   }
 
   const generatedDate = new Date(championship.generatedAt);
-  const formattedDate = generatedDate.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const day = String(generatedDate.getDate()).padStart(2, '0');
+  const month = String(generatedDate.getMonth() + 1).padStart(2, '0');
+  const year = generatedDate.getFullYear();
+  const hours = String(generatedDate.getHours()).padStart(2, '0');
+  const minutes = String(generatedDate.getMinutes()).padStart(2, '0');
+  const seconds = String(generatedDate.getSeconds()).padStart(2, '0');
+  const formattedDate = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 
   const getPositionClass = (pos: number) => {
     if (pos === 1) return "pos1";
@@ -434,6 +442,9 @@ export default function ResultsDatabaseDetail() {
           ),
           tracks: Object.fromEntries(
             leaderboardAssets.tracks.map((t) => [t.name, t.iconUrl || ""])
+          ),
+          classNames: Object.fromEntries(
+            leaderboardAssets.classes.map((c) => [c.id, c.name])
           ),
         }
       : undefined;
@@ -492,9 +503,9 @@ export default function ResultsDatabaseDetail() {
                 {raceHeaders.map((header, idx) => {
                   const trackIcon = getTrackIcon(header.name);
                   return (
-                    <th key={`race-${idx}-${header.name}`} colSpan={2}>
+                    <th key={`race-${idx}-${header.name}`} colSpan={2} className="track-header">
                       {trackIcon && <img src={trackIcon} alt={header.name} />}
-                      {header.name}
+                      <div>{header.name}</div>
                       {header.time && <span className="track-time">{header.time}</span>}
                     </th>
                   );
@@ -650,6 +661,7 @@ export default function ResultsDatabaseDetail() {
                       }
                       const vehicleIcon = getVehicleIcon(time.vehicleId);
                       const vehicleName = getVehicleName(time.vehicleId, time.vehicle);
+                      const diff = posIdx > 0 ? formatTimeDiff(raceTimesArray[0].timeMs, time.timeMs) : "";
                       return (
                         <td key={`lap-${championship.alias}-${raceIdx}-${posIdx}`} className="time-cell">
                           <div className={`time-entry${time.isHuman ? " human-driver" : ""}`}>
@@ -659,6 +671,7 @@ export default function ResultsDatabaseDetail() {
                             <div className="time-info">
                               {vehicleIcon && <img src={vehicleIcon} className="vehicle-icon" alt={vehicleName} />}
                               <span className="time-value">{time.time}</span>
+                              {diff && <span className="time-diff">{diff}</span>}
                             </div>
                           </div>
                         </td>
@@ -697,6 +710,7 @@ export default function ResultsDatabaseDetail() {
                       }
                       const vehicleIcon = getVehicleIcon(time.vehicleId);
                       const vehicleName = getVehicleName(time.vehicleId, time.vehicle);
+                      const diff = posIdx > 0 ? formatTimeDiff(raceTimesArray[0].timeMs, time.timeMs) : "";
                       return (
                         <td key={`qual-${championship.alias}-${raceIdx}-${posIdx}`} className="time-cell">
                           <div className={`time-entry${time.isHuman ? " human-driver" : ""}`}>
@@ -706,6 +720,7 @@ export default function ResultsDatabaseDetail() {
                             <div className="time-info">
                               {vehicleIcon && <img src={vehicleIcon} className="vehicle-icon" alt={vehicleName} />}
                               <span className="time-value">{time.time}</span>
+                              {diff && <span className="time-diff">{diff}</span>}
                             </div>
                           </div>
                         </td>
@@ -764,7 +779,7 @@ export default function ResultsDatabaseDetail() {
                             {slot.Driver}
                           </div>
                           <div className="result-vehicle">
-                            {vehicleIcon && <img src={vehicleIcon} className="vehicle-icon-small" alt={vehicleName} />}
+                            {vehicleIcon && <img src={vehicleIcon} className="vehicle-icon" alt={vehicleName} />}
                             <span>{vehicleName}</span>
                           </div>
                           <div className="result-time">{formattedTime}</div>
