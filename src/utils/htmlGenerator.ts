@@ -6,7 +6,7 @@ interface DriverStanding {
   driver: string;
   vehicle: string;
   vehicleId?: string;
-   isHuman: boolean;
+  isHuman: boolean;
   team: string;
   points: number;
   raceResults: (number | null)[];
@@ -34,7 +34,7 @@ interface BestTime {
   driver: string;
   vehicle: string;
   vehicleId?: string;
-   isHuman: boolean;
+  isHuman: boolean;
   time: string;
   timeMs: number;
 }
@@ -92,7 +92,16 @@ function calculateDriverStandings(races: ParsedRace[]): DriverStanding[] {
 
   for (const race of races) {
     for (const slot of race.slots) {
-      if (!driverMap.has(slot.Driver)) {
+      if (driverMap.has(slot.Driver)) {
+        const entry = driverMap.get(slot.Driver)!;
+        if (
+          !entry.isHuman &&
+          typeof slot.UserId === "number" &&
+          slot.UserId > 0
+        ) {
+          entry.isHuman = true;
+        }
+      } else {
         driverMap.set(slot.Driver, {
           vehicle: slot.Vehicle,
           vehicleId: slot.VehicleId,
@@ -101,11 +110,6 @@ function calculateDriverStandings(races: ParsedRace[]): DriverStanding[] {
           raceResults: [],
           racePoints: [],
         });
-      } else {
-        const entry = driverMap.get(slot.Driver)!;
-        if (!entry.isHuman && typeof slot.UserId === "number" && slot.UserId > 0) {
-          entry.isHuman = true;
-        }
       }
     }
   }
@@ -159,7 +163,7 @@ function calculateTeamStandings(races: ParsedRace[]): TeamStanding[] {
       if (!teamMap.has(slot.Team)) {
         teamMap.set(slot.Team, {
           entries: new Set(),
-          racePoints: Array(races.length).fill(null),
+          racePoints: new Array(races.length).fill(null),
         });
       }
       teamMap.get(slot.Team)!.entries.add(slot.Driver);
@@ -217,7 +221,7 @@ function calculateVehicleStandings(races: ParsedRace[]): VehicleStanding[] {
         vehicleMap.set(slot.Vehicle, {
           vehicleId: slot.VehicleId,
           entries: new Set(),
-          racePoints: Array(races.length).fill(null),
+          racePoints: new Array(races.length).fill(null),
         });
       }
       vehicleMap.get(slot.Vehicle)!.entries.add(slot.Driver);
@@ -274,7 +278,7 @@ function getBestLapTimes(races: ParsedRace[], topN: number = 20): BestTime[][] {
         vehicleId: s.VehicleId,
         isHuman: !!(typeof s.UserId === "number" && s.UserId > 0),
         time: s.BestLap!,
-        timeMs: parseTime(s.BestLap!) * 1000,
+        timeMs: parseTime(s.BestLap) * 1000,
       }))
       .sort((a, b) => a.timeMs - b.timeMs);
 
@@ -295,7 +299,7 @@ function getBestQualifyingTimes(
         vehicleId: s.VehicleId,
         isHuman: !!(typeof s.UserId === "number" && s.UserId > 0),
         time: s.QualTime!,
-        timeMs: parseTime(s.QualTime!) * 1000,
+        timeMs: parseTime(s.QualTime) * 1000,
       }))
       .sort((a, b) => a.timeMs - b.timeMs);
 
@@ -312,7 +316,6 @@ export function generateStandingsHTML(
   },
   gameData?: Record<string, any> | null,
 ): string {
-  // Helper function to get vehicle name from ID
   const getVehicleName = (vehicleId?: string, vehicleName?: string): string => {
     if (vehicleName && vehicleName !== vehicleId) return vehicleName;
     if (!vehicleId || !gameData?.cars) return vehicleName || vehicleId || "";
@@ -326,353 +329,640 @@ export function generateStandingsHTML(
   const bestLapTimes = getBestLapTimes(races);
   const bestQualTimes = getBestQualifyingTimes(races);
 
-  let html = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+  const maxLapRows = bestLapTimes.length
+    ? Math.max(...bestLapTimes.map((times) => times.length))
+    : 0;
+  const maxQualRows = bestQualTimes.length
+    ? Math.max(...bestQualTimes.map((times) => times.length))
+    : 0;
+  const maxRaceRows = races.length
+    ? Math.max(...races.map((race) => race.slots.length))
+    : 0;
+
+  const stylesheet = `:root {
+  --bg-dark: #1a1a1a;
+  --bg-card: #242424;
+  --bg-header: #34495e;
+  --bg-caption: #2c3e50;
+  --border-color: #3a3a3a;
+  --text-light: #e0e0e0;
+  --text-muted: #95a5a6;
+  --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  --border-radius: 8px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-dark);
+}
+
+.page-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+}
+
+.results-detail-page {
+  font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-light);
+  min-height: 100vh;
+}
+
+/* Headers and wrappers - shared card styling */
+.results-header,
+.results-table-wrapper {
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+}
+
+.results-header {
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.results-table-wrapper {
+  overflow: hidden;
+  margin-bottom: 30px;
+}
+
+.results-title {
+  color: #ffffff;
+  font-size: 2rem;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.results-subtitle {
+  color: #999;
+  font-size: 0.9rem;
+  margin-bottom: 0;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card);
+  margin: 0;
+}
+
+.results-table caption {
+  font-size: 1.3em;
+  font-weight: bold;
+  padding: 15px;
+  background: var(--bg-caption);
+  color: white;
+  text-align: left;
+  caption-side: top;
+}
+
+.results-table thead {
+  background-color: var(--bg-header);
+  color: white;
+}
+
+/* Table cells - shared border and padding */
+.results-table th,
+.results-table td {
+  border: 1px solid var(--border-color);
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.results-table th {
+  font-weight: 600;
+  color: #fff;
+  padding: 12px 8px;
+}
+
+.results-table td {
+  color: var(--text-light);
+}
+
+.results-table tbody tr:hover {
+  background-color: #2a2a2a;
+}
+
+.results-table tbody tr:nth-child(even) {
+  background-color: #1f1f1f;
+}
+
+.results-table .points-cell {
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.results-table .pos1 {
+  background-color: #ffd700 !important;
+  color: #000 !important;
+}
+
+.results-table .pos2 {
+  background-color: #c0c0c0 !important;
+  color: #000 !important;
+}
+
+.results-table .pos3 {
+  background-color: #cd7f32 !important;
+  color: #000 !important;
+}
+
+/* Podium cells for human drivers: keep podium text color (not ochre) */
+.results-table tbody tr.human-driver td.pos1,
+.results-table tbody tr.human-driver td.pos2,
+.results-table tbody tr.human-driver td.pos3 {
+  color: #000 !important;
+}
+
+.track-time {
+  font-size: 0.8em;
+  color: var(--text-muted);
+  display: block;
+}
+
+/* Left-aligned cells */
+.driver-name-cell {
+  text-align: left !important;
+  font-weight: 600;
+}
+
+.vehicle-icon {
+  height: auto;
+  vertical-align: middle;
+  margin-right: 6px;
+  max-height: 18px;
+  object-fit: contain;
+}
+
+/* Human driver styling - colored text instead of badge */
+.results-table tbody tr.human-driver {
+  color: #c99700 !important;
+}
+
+.results-table tbody tr.human-driver td {
+  color: #c99700 !important;
+}
+
+.time-entry.human-driver,
+.race-result-entry.human-driver {
+  color: #c99700;
+}
+
+.time-entry.human-driver .time-driver,
+.race-result-entry.human-driver .result-driver {
+  color: #c99700;
+}
+
+.human-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #c99700;
+  color: white;
+  font-size: 0.75em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Display blocks with font styling */
+.time-diff,
+.race-position-value,
+.race-points-value {
+  display: block;
+}
+
+.time-diff {
+  color: #e74c3c;
+  font-size: 0.85em;
+}
+
+.race-position-value {
+  font-weight: bold;
+}
+
+.race-points-value {
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.back-button {
+  margin-bottom: 20px;
+}
+
+/* Shared container and layout styles */
+.race-header {
+  font-size: 0.85em;
+  min-width: 150px;
+}
+
+/* Cell styling - shared for time and race result cells */
+.time-cell,
+.race-result-cell {
+  padding: 8px 4px !important;
+  text-align: center;
+}
+
+/* Entry container - shared for time and race result entries */
+.time-entry,
+.race-result-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+/* Driver name styling - shared for time and result drivers */
+.time-driver,
+.result-driver {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Info sections - shared for time info and result vehicle */
+.time-info,
+.result-vehicle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-muted);
+}
+
+.result-time {
+  margin-top: 2px;
+}
+
+.result-position {
+  font-weight: 700;
+  font-size: 0.95em;
+  color: #fff;
+}
+
+.vehicle-icon-small {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  margin-right: 4px;
+}
+`;
+
+  const driverTable = `
+  <div class="results-table-wrapper">
+    <table class="results-table">
+      <caption>Driver Standings</caption>
+      <thead>
+        <tr>
+          <th rowspan="2">Pos</th>
+          <th rowspan="2">Driver</th>
+          <th rowspan="2">Vehicle</th>
+          <th rowspan="2">Team</th>
+          <th rowspan="2">Points</th>
+          ${races
+            .map((race) => {
+              const trackImg = leaderboardAssets?.tracks[race.trackname] || "";
+              return `<th colspan="2">${trackImg ? `<img src="${trackImg}" alt="${race.trackname}" />` : ""}${race.trackname}${race.timestring ? `<span class="track-time">${race.timestring}</span>` : ""}</th>`;
+            })
+            .join("")}
+        </tr>
+        <tr>
+          ${races.map(() => "<th>Pts</th><th>Pos</th>").join("")}
+        </tr>
+      </thead>
+      <tbody>
+        ${driverStandings
+          .map((standing) => {
+            const vehicleIcon =
+              standing.vehicleId && leaderboardAssets?.classes[standing.vehicleId]
+                ? leaderboardAssets.classes[standing.vehicleId]
+                : "";
+            const displayVehicleName = getVehicleName(
+              standing.vehicleId,
+              standing.vehicle,
+            );
+            const positionCells = standing.racePoints
+              .map((pts, raceIdx) => {
+                const result = standing.raceResults[raceIdx];
+                let posClass = "";
+                if (result === 1) posClass = "pos1";
+                else if (result === 2) posClass = "pos2";
+                else if (result === 3) posClass = "pos3";
+
+                return `<td class="points-cell">${pts ?? "-"}</td><td class="${posClass}">${result ?? "-"}</td>`;
+              })
+              .join("");
+
+            return `<tr class="${standing.isHuman ? "human-driver" : ""}">
+              <td>${standing.position}</td>
+              <td class="driver-name-cell">${standing.driver}</td>
+              <td>${vehicleIcon ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" />` : ""}${displayVehicleName}</td>
+              <td>${standing.team}</td>
+              <td class="points-cell">${standing.points}</td>
+              ${positionCells}
+            </tr>`;
+          })
+          .join("")}
+      </tbody>
+    </table>
+  </div>`;
+
+  const teamTable = `
+  <div class="results-table-wrapper">
+    <table class="results-table">
+      <caption>Team Standings</caption>
+      <thead>
+        <tr>
+          <th rowspan="2">Pos</th>
+          <th rowspan="2">Team</th>
+          <th rowspan="2">Entries</th>
+          <th rowspan="2">Points</th>
+          ${races
+            .map(
+              (race) =>
+                `<th>${race.trackname}${race.timestring ? `<span class="track-time">${race.timestring}</span>` : ""}</th>`,
+            )
+            .join("")}
+        </tr>
+      </thead>
+      <tbody>
+        ${teamStandings
+          .map(
+            (standing) => `<tr>
+              <td>${standing.position}</td>
+              <td>${standing.team}</td>
+              <td>${standing.entries}</td>
+              <td class="points-cell">${standing.points}</td>
+              ${standing.racePoints
+                .map((pts) => `<td class="points-cell">${pts ?? "-"}</td>`)
+                .join("")}
+            </tr>`,
+          )
+          .join("")}
+      </tbody>
+    </table>
+  </div>`;
+
+  const vehicleTable = `
+  <div class="results-table-wrapper">
+    <table class="results-table">
+      <caption>Vehicle Standings</caption>
+      <thead>
+        <tr>
+          <th rowspan="2">Pos</th>
+          <th rowspan="2">Vehicle</th>
+          <th rowspan="2">Entries</th>
+          <th rowspan="2">Points</th>
+          ${races
+            .map(
+              (race) =>
+                `<th>${race.trackname}${race.timestring ? `<span class="track-time">${race.timestring}</span>` : ""}</th>`,
+            )
+            .join("")}
+        </tr>
+      </thead>
+      <tbody>
+        ${vehicleStandings
+          .map((standing) => {
+            const vehicleIcon =
+              standing.vehicleId && leaderboardAssets?.classes[standing.vehicleId]
+                ? leaderboardAssets.classes[standing.vehicleId]
+                : "";
+            const displayVehicleName = getVehicleName(
+              standing.vehicleId,
+              standing.vehicle,
+            );
+
+            return `<tr>
+              <td>${standing.position}</td>
+              <td>${vehicleIcon ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" />` : ""}${displayVehicleName}</td>
+              <td>${standing.entries}</td>
+              <td class="points-cell">${standing.points}</td>
+              ${standing.racePoints
+                .map((pts) => `<td class="points-cell">${pts ?? "-"}</td>`)
+                .join("")}
+            </tr>`;
+          })
+          .join("")}
+      </tbody>
+    </table>
+  </div>`;
+
+  const bestLapTable = maxLapRows
+    ? `
+    <div class="results-table-wrapper">
+      <table class="results-table">
+        <caption>Best Race Lap Times</caption>
+        <thead>
+          <tr>
+            <th>Pos</th>
+            ${races
+              .map(
+                (race) =>
+                  `<th class="race-header">${race.trackname}</th>`,
+              )
+              .join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${Array.from({ length: maxLapRows })
+            .map((_, posIdx) => {
+              const cells = bestLapTimes
+                .map((raceTimes) => {
+                  const time = raceTimes[posIdx];
+                  if (!time) return `<td>-</td>`;
+
+                  const diff =
+                    posIdx > 0
+                      ? formatTimeDiff(raceTimes[0].timeMs, time.timeMs)
+                      : "";
+                  const vehicleIcon =
+                    time.vehicleId && leaderboardAssets?.classes[time.vehicleId]
+                      ? leaderboardAssets.classes[time.vehicleId]
+                      : "";
+                  const displayVehicleName = getVehicleName(
+                    time.vehicleId,
+                    time.vehicle,
+                  );
+
+                  return `<td class="time-cell">
+                    <div class="time-entry${time.isHuman ? " human-driver" : ""}">
+                      <div class="time-driver">${time.driver}</div>
+                      <div class="time-info">
+                        ${vehicleIcon ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" />` : ""}
+                        <span class="time-value">${time.time}</span>
+                        ${diff ? `<span class="time-diff">${diff}</span>` : ""}
+                      </div>
+                    </div>
+                  </td>`;
+                })
+                .join("");
+
+              return `<tr>
+                <td>${posIdx + 1}</td>
+                ${cells}
+              </tr>`;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>`
+    : "";
+
+  const bestQualTable = maxQualRows
+    ? `
+    <div class="results-table-wrapper">
+      <table class="results-table">
+        <caption>Best Qualification Times</caption>
+        <thead>
+          <tr>
+            <th>Pos</th>
+            ${races
+              .map(
+                (race) =>
+                  `<th class="race-header">${race.trackname}</th>`,
+              )
+              .join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${Array.from({ length: maxQualRows })
+            .map((_, posIdx) => {
+              const cells = bestQualTimes
+                .map((raceTimes) => {
+                  const time = raceTimes[posIdx];
+                  if (!time) return `<td>-</td>`;
+
+                  const diff =
+                    posIdx > 0
+                      ? formatTimeDiff(raceTimes[0].timeMs, time.timeMs)
+                      : "";
+                  const vehicleIcon =
+                    time.vehicleId && leaderboardAssets?.classes[time.vehicleId]
+                      ? leaderboardAssets.classes[time.vehicleId]
+                      : "";
+                  const displayVehicleName = getVehicleName(
+                    time.vehicleId,
+                    time.vehicle,
+                  );
+
+                  return `<td class="time-cell">
+                    <div class="time-entry${time.isHuman ? " human-driver" : ""}">
+                      <div class="time-driver">${time.driver}</div>
+                      <div class="time-info">
+                        ${vehicleIcon ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" />` : ""}
+                        <span class="time-value">${time.time}</span>
+                        ${diff ? `<span class="time-diff">${diff}</span>` : ""}
+                      </div>
+                    </div>
+                  </td>`;
+                })
+                .join("");
+
+              return `<tr>
+                <td>${posIdx + 1}</td>
+                ${cells}
+              </tr>`;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>`
+    : "";
+
+  const raceResultsTable = maxRaceRows
+    ? `
+    <div class="results-table-wrapper">
+      <table class="results-table">
+        <caption>Race Results</caption>
+        <thead>
+          <tr>
+            <th>Pos</th>
+            ${races
+              .map(
+                (race) =>
+                  `<th class="race-header">${race.trackname}</th>`,
+              )
+              .join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${Array.from({ length: maxRaceRows })
+            .map((_, posIdx) => {
+              const cells = races
+                .map((race) => {
+                  const sortedSlots = [...race.slots].sort((a, b) => {
+                    const aFinished = a.FinishStatus === "Finished" || !!a.TotalTime;
+                    const bFinished = b.FinishStatus === "Finished" || !!b.TotalTime;
+                    if (aFinished !== bFinished) return bFinished ? 1 : -1;
+
+                    const aTime = parseTime(a.TotalTime);
+                    const bTime = parseTime(b.TotalTime);
+                    return aTime - bTime;
+                  });
+
+                  const slot = sortedSlots[posIdx];
+                  if (!slot?.TotalTime) {
+                    return `<td>-</td>`;
+                  }
+
+                  const vehicleIcon =
+                    slot.VehicleId && leaderboardAssets?.classes[slot.VehicleId]
+                      ? leaderboardAssets.classes[slot.VehicleId]
+                      : "";
+                  const displayVehicleName = getVehicleName(
+                    slot.VehicleId,
+                    slot.Vehicle,
+                  );
+                  const isHuman = typeof slot.UserId === "number" && slot.UserId > 0;
+
+                  return `<td class="race-result-cell">
+                    <div class="race-result-entry${isHuman ? " human-driver" : ""}">
+                      <div class="result-driver">${slot.Driver}</div>
+                      <div class="result-vehicle">${vehicleIcon ? `<img src="${vehicleIcon}" class="vehicle-icon-small" alt="${displayVehicleName}" />` : ""}<span>${displayVehicleName}</span></div>
+                      <div class="result-time">${slot.TotalTime}</div>
+                    </div>
+                  </td>`;
+                })
+                .join("");
+
+              return `<tr>
+                <td>${posIdx + 1}</td>
+                ${cells}
+              </tr>`;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8"/>
-<link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
-<style>
-body { font-family: 'Open Sans', sans-serif; margin: 20px; background: #f5f5f5; }
-h1 { color: #333; margin-bottom: 5px; }
-h3 { color: #666; margin-top: 0; }
-table { border-collapse: collapse; width: 100%; margin: 30px 0; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-caption { font-size: 1.3em; font-weight: bold; padding: 15px; background: #2c3e50; color: white; text-align: left; }
-thead { background-color: #34495e; color: white; }
-th { border: 1px solid #ddd; padding: 12px 8px; text-align: center; font-weight: 600; }
-td { border: 1px solid #ddd; padding: 10px 8px; text-align: center; }
-tbody tr:hover { background-color: #ecf0f1; }
-.even { background-color: #f9f9f9; }
-.points { font-weight: bold; font-size: 1.1em; }
-.pos1 { background-color: #ffd700 !important; }
-.pos2 { background-color: #c0c0c0 !important; }
-.pos3 { background-color: #cd7f32 !important; }
-.track-header { font-size: 0.9em; padding: 5px; }
-.track-header img { display: block; margin: 5px auto; max-width: 80px; height: auto; }
-.track-time { font-size: 0.8em; color: #95a5a6; display: block; }
-.driver-name { text-align: left; font-weight: 600; }
-.vehicle-name, .team-name { text-align: left; font-size: 0.9em; }
-.vehicle-icon { height: auto; vertical-align: middle; margin-right: 5px; }
-.human-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 2px 6px; border-radius: 999px; background: #16a085; color: white; font-size: 0.75em; font-weight: 700; text-transform: uppercase; }
-.time-diff { color: #e74c3c; font-size: 0.85em; display: block; }
-.minor { color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>${stylesheet}</style>
 </head>
-<body>
-<span class="minor">Generated from R3E Toolbox</span>
-<h1>${championshipName}</h1>
-<h3>Championship Standings</h3>
-
-<!-- Driver Standings -->
-<table>
-<caption>Driver Standings</caption>
-<thead>
-<tr>
-<th rowspan="2">Pos</th>
-<th rowspan="2">Driver</th>
-<th rowspan="2">Vehicle</th>
-<th rowspan="2">Team</th>
-<th rowspan="2">Points</th>`;
-
-  races.forEach((race) => {
-    const trackImg = leaderboardAssets?.tracks[race.trackname] || "";
-    html += `\n<th colspan="2" class="track-header">`;
-    if (trackImg) html += `<img src="${trackImg}" alt="${race.trackname}"/>`;
-    html += `${race.trackname}<span class="track-time">${race.timestring}</span></th>`;
-  });
-
-  html += `
-</tr>
-<tr>`;
-  races.forEach(() => {
-    html += `\n<th>Pts</th><th>Pos</th>`;
-  });
-  html += `
-</tr>
-</thead>
-<tbody>`;
-
-  driverStandings.forEach((standing, idx) => {
-    const rowClass = idx % 2 === 0 ? "" : ' class="even"';
-    const vehicleIcon =
-      standing.vehicleId && leaderboardAssets?.classes[standing.vehicleId]
-        ? leaderboardAssets.classes[standing.vehicleId]
-        : "";
-    const displayVehicleName = getVehicleName(standing.vehicleId, standing.vehicle);
-    const humanBadge = standing.isHuman
-      ? '<span class="human-badge">Human</span>'
-      : "";
-    html += `\n<tr${rowClass}>
-<td>${standing.position}</td>
-<td class="driver-name">${standing.driver}${humanBadge}</td>
-<td class="vehicle-name">${vehicleIcon ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" title="${displayVehicleName}"/> ${displayVehicleName}` : displayVehicleName}</td>
-<td class="team-name">${standing.team}</td>
-<td class="points">${standing.points}</td>`;
-
-    standing.racePoints.forEach((pts, raceIdx) => {
-      const pos = standing.raceResults[raceIdx];
-      html += `\n<td class="points">${pts !== null ? pts : "-"}</td>`;
-
-      let posClass = "";
-      if (pos === 1) posClass = ' class="pos1"';
-      else if (pos === 2) posClass = ' class="pos2"';
-      else if (pos === 3) posClass = ' class="pos3"';
-
-      html += `\n<td${posClass}>${pos !== null ? pos : "-"}</td>`;
-    });
-
-    html += "\n</tr>";
-  });
-
-  html += `
-</tbody>
-</table>
-
-<!-- Team Standings -->
-<table>
-<caption>Team Standings</caption>
-<thead>
-<tr>
-<th rowspan="2">Pos</th>
-<th rowspan="2">Team</th>
-<th rowspan="2">Entries</th>
-<th rowspan="2">Points</th>`;
-
-  races.forEach((race) => {
-    html += `\n<th class="track-header">${race.trackname}<span class="track-time">${race.timestring}</span></th>`;
-  });
-
-  html += `
-</tr>
-</thead>
-<tbody>`;
-
-  teamStandings.forEach((standing, idx) => {
-    const rowClass = idx % 2 === 0 ? "" : ' class="even"';
-    html += `\n<tr${rowClass}>
-<td>${standing.position}</td>
-<td class="team-name">${standing.team}</td>
-<td>${standing.entries}</td>
-<td class="points">${standing.points}</td>`;
-
-    standing.racePoints.forEach((pts) => {
-      html += `\n<td class="points">${pts !== null ? pts : "-"}</td>`;
-    });
-
-    html += "\n</tr>";
-  });
-
-  html += `
-</tbody>
-</table>
-
-<!-- Vehicle Standings -->
-<table>
-<caption>Vehicle Standings</caption>
-<thead>
-<tr>
-<th rowspan="2">Pos</th>
-<th rowspan="2">Vehicle</th>
-<th rowspan="2">Entries</th>
-<th rowspan="2">Points</th>`;
-
-  races.forEach((race) => {
-    html += `\n<th class="track-header">${race.trackname}<span class="track-time">${race.timestring}</span></th>`;
-  });
-
-  html += `
-</tr>
-</thead>
-<tbody>`;
-
-  vehicleStandings.forEach((standing, idx) => {
-    const rowClass = idx % 2 === 0 ? "" : ' class="even"';
-    const vehicleIcon =
-      standing.vehicleId && leaderboardAssets?.classes[standing.vehicleId]
-        ? leaderboardAssets.classes[standing.vehicleId]
-        : "";
-    const displayVehicleName = getVehicleName(standing.vehicleId, standing.vehicle);
-    const vehicleDisplay = vehicleIcon
-      ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" title="${displayVehicleName}"/> ${displayVehicleName}`
-      : displayVehicleName;
-    html += `\n<tr${rowClass}>
-<td>${standing.position}</td>
-<td class="vehicle-name">${vehicleDisplay}</td>
-<td>${standing.entries}</td>
-<td class="points">${standing.points}</td>`;
-
-    standing.racePoints.forEach((pts) => {
-      html += `\n<td class="points">${pts !== null ? pts : "-"}</td>`;
-    });
-
-    html += "\n</tr>";
-  });
-
-  html += `
-</tbody>
-</table>
-
-<!-- Best Race Lap Times -->
-<table>
-<caption>Best Race Lap Times</caption>
-<thead>
-<tr>
-<th>Pos</th>`;
-
-  races.forEach((race) => {
-    html += `\n<th class="track-header">${race.trackname}<span class="track-time">${race.timestring}</span></th>`;
-  });
-
-  html += `
-</tr>
-</thead>
-<tbody>`;
-
-  const maxLapRows = Math.max(...bestLapTimes.map((times) => times.length));
-  for (let i = 0; i < maxLapRows; i++) {
-    const rowClass = i % 2 === 0 ? "" : ' class="even"';
-    html += `\n<tr${rowClass}>
-<td>${i + 1}</td>`;
-
-    bestLapTimes.forEach((raceTimes) => {
-      if (i < raceTimes.length) {
-        const time = raceTimes[i];
-        const diff =
-          i > 0 ? formatTimeDiff(raceTimes[0].timeMs, time.timeMs) : "";
-        const diffHtml = diff
-          ? '<span class="time-diff">' + diff + "</span>"
-          : "";
-        const vehicleIcon =
-          time.vehicleId && leaderboardAssets?.classes[time.vehicleId]
-            ? leaderboardAssets.classes[time.vehicleId]
-            : "";
-        const displayVehicleName = getVehicleName(time.vehicleId, time.vehicle);
-        const vehicleDisplay = vehicleIcon
-          ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" title="${displayVehicleName}"/> ${displayVehicleName}`
-          : displayVehicleName;
-        const humanBadge = time.isHuman
-          ? '<span class="human-badge">Human</span>'
-          : "";
-        html += `\n<td class="driver-name">${time.driver}${humanBadge}<br><span class="vehicle-name">${vehicleDisplay}</span><br>${time.time}${diffHtml}</td>`;
-      } else {
-        html += `\n<td>-</td>`;
-      }
-    });
-
-    html += "\n</tr>";
-  }
-
-  html += `
-</tbody>
-</table>
-
-<!-- Best Qualification Times -->
-<table>
-<caption>Best Qualification Times</caption>
-<thead>
-<tr>
-<th>Pos</th>`;
-
-  races.forEach((race) => {
-    html += `\n<th class="track-header">${race.trackname}<span class="track-time">${race.timestring}</span></th>`;
-  });
-
-  html += `
-</tr>
-</thead>
-<tbody>`;
-
-  const maxQualRows = Math.max(...bestQualTimes.map((times) => times.length));
-  for (let i = 0; i < maxQualRows; i++) {
-    const rowClass = i % 2 === 0 ? "" : ' class="even"';
-    html += `\n<tr${rowClass}>
-<td>${i + 1}</td>`;
-
-    bestQualTimes.forEach((raceTimes) => {
-      if (i < raceTimes.length) {
-        const time = raceTimes[i];
-        const diff =
-          i > 0 ? formatTimeDiff(raceTimes[0].timeMs, time.timeMs) : "";
-        const diffHtml = diff
-          ? '<span class="time-diff">' + diff + "</span>"
-          : "";
-        const vehicleIcon =
-          time.vehicleId && leaderboardAssets?.classes[time.vehicleId]
-            ? leaderboardAssets.classes[time.vehicleId]
-            : "";
-        const displayVehicleName = getVehicleName(time.vehicleId, time.vehicle);
-        const vehicleDisplay = vehicleIcon
-          ? `<img src="${vehicleIcon}" class="vehicle-icon" alt="${displayVehicleName}" title="${displayVehicleName}"/> ${displayVehicleName}`
-          : displayVehicleName;
-        const humanBadge = time.isHuman
-          ? '<span class="human-badge">Human</span>'
-          : "";
-        html += `\n<td class="driver-name">${time.driver}${humanBadge}<br><span class="vehicle-name">${vehicleDisplay}</span><br>${time.time}${diffHtml}</td>`;
-      } else {
-        html += `\n<td>-</td>`;
-      }
-    });
-
-    html += "\n</tr>";
-  }
-
-  html += `
-</tbody>
-</table>
-
-<!-- Race Results -->
-<table>
-<caption>Race Results</caption>
-<thead>
-<tr>
-<th>Pos</th>`;
-
-  races.forEach((race) => {
-    html += `\n<th class="track-header">${race.trackname}<span class="track-time">${race.timestring}</span></th>`;
-  });
-
-  html += `
-</tr>
-</thead>
-<tbody>`;
-
-  const maxDrivers = Math.max(
-    ...driverStandings.map((s) => s.raceResults.length),
-  );
-  for (let pos = 1; pos <= maxDrivers; pos++) {
-    const rowClass = pos % 2 === 0 ? ' class="even"' : "";
-    html += `\n<tr${rowClass}>
-<td>${pos}</td>`;
-
-    races.forEach((_race, raceIdx) => {
-      const driver = driverStandings.find(
-        (s) => s.raceResults[raceIdx] === pos,
-      );
-      if (driver) {
-        let posClass = "";
-        if (pos === 1) posClass = ' class="pos1"';
-        else if (pos === 2) posClass = ' class="pos2"';
-        else if (pos === 3) posClass = ' class="pos3"';
-
-        const humanBadge = driver.isHuman
-          ? '<span class="human-badge">Human</span>'
-          : "";
-        html += `\n<td${posClass} class="driver-name">${driver.driver}${humanBadge}</td>`;
-      } else {
-        html += `\n<td>-</td>`;
-      }
-    });
-
-    html += "\n</tr>";
-  }
-
-  html += `
-</tbody>
-</table>
-
+<body class="results-detail-page">
+  <div class="page-container">
+    <div class="results-header">
+      <h1 class="results-title">${championshipName}</h1>
+      <p class="results-subtitle">Championship Standings</p>
+      <p class="results-subtitle">Generated from R3E Toolbox</p>
+    </div>
+    ${driverTable}
+    ${teamStandings.length > 1 ? teamTable : ""}
+    ${vehicleTable}
+    ${bestLapTable}
+    ${bestQualTable}
+    ${raceResultsTable}
+  </div>
 </body>
 </html>`;
-
-  return html;
 }
 
 export function generateChampionshipIndexHTML(
@@ -695,9 +985,10 @@ export function generateChampionshipIndexHTML(
 
       const rowClass = idx % 2 === 0 ? "even" : "odd";
 
+      const carIconHtml = c.carIcon ? `<img src="${c.carIcon}" alt="${c.carName || "Car icon"}" />` : "";
       const carCell = c.carName
         ? `<div class="car-cell">
-            ${c.carIcon ? `<img src="${c.carIcon}" alt="${c.carName || "Car icon"}" />` : ""}
+            ${carIconHtml}
             <span>${c.carName}</span>
           </div>`
         : "-";
@@ -834,6 +1125,6 @@ export function downloadHTML(html: string, filename: string): void {
   link.download = filename;
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
   URL.revokeObjectURL(url);
 }

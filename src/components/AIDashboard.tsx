@@ -418,7 +418,7 @@ const AIDashboard: React.FC = () => {
             {assets && (
               <Card bg="dark" className="border-secondary mb-4">
                 <Card.Body>
-                  <div className="d-flex justify-content-between align-items-center">
+                  <div className="d-flex justify-content-between align-items-center text-white-50">
                     <div>
                       <strong>Loaded:</strong> {assets.numClasses} classes and{" "}
                       {assets.numTracks} tracks

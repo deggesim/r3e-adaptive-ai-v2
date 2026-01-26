@@ -11,7 +11,7 @@ interface ChampionshipState {
 
 export const useChampionshipStore = create<ChampionshipState>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       championships: [],
 
       addOrUpdate: (entry) =>

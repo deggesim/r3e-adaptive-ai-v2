@@ -116,12 +116,11 @@
   color: #000 !important;
 }
 
-/* Font size 0.9em - shared for similar content cells */
-.track-header,
-.vehicle-name-cell,
-.team-name-cell,
-.race-position-cell {
-  font-size: 0.9em;
+/* Podium cells for human drivers: keep podium text color (not ochre) */
+.results-table tbody tr.human-driver td.pos1,
+.results-table tbody tr.human-driver td.pos2,
+.results-table tbody tr.human-driver td.pos3 {
+  color: #000 !important;
 }
 
 .track-header {
@@ -142,13 +141,8 @@
 }
 
 /* Left-aligned cells */
-.driver-name-cell,
-.vehicle-name-cell,
-.team-name-cell {
-  text-align: left !important;
-}
-
 .driver-name-cell {
+  text-align: left !important;
   font-weight: 600;
 }
 
@@ -158,6 +152,26 @@
   margin-right: 5px;
 }
 
+/* Human driver styling - colored text instead of badge */
+
+.results-table tbody tr.human-driver {
+  color: #c99700 !important;
+}
+
+.results-table tbody tr.human-driver td {
+  color: #c99700 !important;
+}
+
+.time-entry.human-driver,
+.race-result-entry.human-driver {
+  color: #c99700;
+}
+
+.time-entry.human-driver .time-driver,
+.race-result-entry.human-driver .result-driver {
+  color: #c99700;
+}
+
 .human-badge {
   display: inline-flex;
   align-items: center;
@@ -165,7 +179,7 @@
   margin-left: 8px;
   padding: 2px 6px;
   border-radius: 999px;
-  background: #16a085;
+  background: #c99700;
   color: white;
   font-size: 0.75em;
   font-weight: 700;
@@ -217,7 +231,6 @@
   flex-direction: column;
   gap: 4px;
   align-items: center;
-  font-size: 0.8em;
 }
 
 /* Driver name styling - shared for time and result drivers */
@@ -233,7 +246,6 @@
   display: flex;
   align-items: center;
   gap: 3px;
-  font-size: 0.8em;
   color: var(--text-muted);
 }
 

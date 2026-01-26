@@ -24,6 +24,7 @@ export interface RaceRoomTeam {
 export interface RaceRoomData {
   classes: Record<string, RaceRoomClass>;
   tracks: Record<string, RaceRoomTrack>;
+  cars?: Record<string, { Name?: string; Class?: number }>;
   teams?: Record<string, RaceRoomTeam>;
 }
 

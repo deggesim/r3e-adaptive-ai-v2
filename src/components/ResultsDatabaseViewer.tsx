@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Badge,
@@ -12,8 +11,15 @@ import {
   Modal,
   Row,
 } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 import { useChampionshipStore } from "../store/championshipStore";
 import type { ChampionshipEntry } from "../types";
+import type { ParsedRace } from "../types/raceResults";
+import {
+  downloadHTML,
+  generateChampionshipIndexHTML,
+  generateStandingsHTML,
+} from "../utils/htmlGenerator";
 
 function SectionTitle({ label }: { readonly label: string }) {
   return (
@@ -31,9 +37,15 @@ interface ChampionshipCardProps {
   readonly championship: ChampionshipEntry;
   readonly onDelete: (alias: string) => void;
   readonly onClick: (alias: string) => void;
+  readonly onDownload: (championship: ChampionshipEntry) => void;
 }
 
-function ChampionshipCard({ championship, onDelete, onClick }: ChampionshipCardProps) {
+function ChampionshipCard({
+  championship,
+  onDelete,
+  onClick,
+  onDownload,
+}: ChampionshipCardProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -62,8 +74,8 @@ function ChampionshipCard({ championship, onDelete, onClick }: ChampionshipCardP
 
   return (
     <>
-      <Card 
-        className="bg-dark border-secondary h-100" 
+      <Card
+        className="bg-dark border-secondary h-100"
         style={{ cursor: "pointer" }}
         onClick={handleCardClick}
       >
@@ -127,6 +139,21 @@ function ChampionshipCard({ championship, onDelete, onClick }: ChampionshipCardP
               </div>
             </ListGroup.Item>
           </ListGroup>
+          <div className="d-flex justify-content-end mt-3">
+            <Button
+              variant="outline-info"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownload(championship);
+              }}
+              disabled={
+                !championship.raceData || championship.raceData.length === 0
+              }
+            >
+              Download HTML
+            </Button>
+          </div>
         </Card.Body>
       </Card>
 
@@ -189,10 +216,30 @@ export default function ResultsDatabaseViewer() {
     setShowClearAllModal(false);
   };
 
-  const totalRaces = championships.reduce(
-    (sum, champ) => sum + champ.races,
-    0,
-  );
+  const totalRaces = championships.reduce((sum, champ) => sum + champ.races, 0);
+
+  const handleDownloadChampionship = (championship: ChampionshipEntry) => {
+    if (!championship.raceData || championship.raceData.length === 0) {
+      alert(
+        "No race data stored for this championship. Create or update it first.",
+      );
+      return;
+    }
+
+    const races = championship.raceData as ParsedRace[];
+    const html = generateStandingsHTML(races, championship.alias);
+
+    downloadHTML(
+      html,
+      championship.fileName || `${championship.alias || "championship"}.html`,
+    );
+  };
+
+  const handleDownloadIndex = () => {
+    if (championships.length === 0) return;
+    const html = generateChampionshipIndexHTML(championships);
+    downloadHTML(html, "index.html");
+  };
 
   return (
     <Container fluid className="py-4">
@@ -232,7 +279,9 @@ export default function ResultsDatabaseViewer() {
                     ? Math.round(totalRaces / championships.length)
                     : 0}
                 </div>
-                <div className="text-white-50 small">Avg. Races/Championship</div>
+                <div className="text-white-50 small">
+                  Avg. Races/Championship
+                </div>
               </Card.Body>
             </Card>
           </Col>
@@ -243,8 +292,9 @@ export default function ResultsDatabaseViewer() {
       <Card className="bg-dark border-secondary mb-4">
         <Card.Body>
           <Row className="g-3 align-items-center">
-            <Col md={8}>
-              <Form.Group>
+            <Col md={12}>
+              <Form.Group controlId="searchQuery">
+                <Form.Label className="text-white mb-1">Search</Form.Label>
                 <Form.Control
                   type="text"
                   placeholder="Search championships by alias, car name, or filename..."
@@ -253,15 +303,6 @@ export default function ResultsDatabaseViewer() {
                   className="bg-dark text-white border-secondary"
                 />
               </Form.Group>
-            </Col>
-            <Col md={4} className="text-md-end">
-              <Button
-                variant="outline-danger"
-                onClick={() => setShowClearAllModal(true)}
-                disabled={championships.length === 0}
-              >
-                Clear All Championships
-              </Button>
             </Col>
           </Row>
         </Card.Body>
@@ -293,17 +334,36 @@ export default function ResultsDatabaseViewer() {
           <SectionTitle
             label={`Championships (${filteredChampionships.length})`}
           />
+          <div className="d-flex justify-content-end mb-3">
+            <Button
+              variant="outline-info"
+              onClick={handleDownloadIndex}
+              disabled={championships.length === 0}
+            >
+              Download index.html
+            </Button>
+          </div>
           <Row className="g-3">
             {filteredChampionships.map((championship) => (
-              <Col key={championship.alias} md={6} lg={4} xl={3}>
+              <Col key={championship.alias} md={6} lg={4}>
                 <ChampionshipCard
                   championship={championship}
                   onDelete={removeChampionship}
                   onClick={handleCardClick}
+                  onDownload={handleDownloadChampionship}
                 />
               </Col>
             ))}
           </Row>
+          <div className="mt-4 text-center">
+            <Button
+              variant="outline-danger"
+              onClick={() => setShowClearAllModal(true)}
+              disabled={championships.length === 0}
+            >
+              Clear All Championships
+            </Button>
+          </div>
         </>
       )}
 

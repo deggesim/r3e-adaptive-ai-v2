@@ -20,11 +20,6 @@ import {
 import { useChampionshipStore } from "../store/championshipStore";
 import { useLeaderboardAssetsStore } from "../store/leaderboardAssetsStore";
 import { parseResultFiles } from "../utils/raceResultParser";
-import {
-  generateStandingsHTML,
-  generateChampionshipIndexHTML,
-  downloadHTML,
-} from "../utils/htmlGenerator";
 
 function SectionTitle({ label }: { readonly label: string }) {
   return (
@@ -57,6 +52,18 @@ function convertAssetsForHTML(assets: LeaderboardAssets | null) {
   });
 
   return { classes: classesMap, tracks: tracksMap };
+}
+
+function buildRaceKey(race: ParsedRace): string {
+  const classInfo = race.slots.find(
+    (slot) => slot.ClassId !== undefined || slot.ClassName,
+  );
+  const classPart =
+    classInfo?.ClassId !== undefined
+      ? String(classInfo.ClassId)
+      : (classInfo?.ClassName || "unknown-class");
+  const trackPart = race.trackid ? String(race.trackid) : race.trackname;
+  return `${trackPart}::${classPart}`;
 }
 
 function AssetListItem({
@@ -167,8 +174,6 @@ export default function BuildResultsDatabase() {
   const [htmlOverride, setHtmlOverride] = useState("");
   const [resultFiles, setResultFiles] = useState<File[]>([]);
   const [championshipAlias, setChampionshipAlias] = useState("");
-  const [debouncedChampionshipAlias, setDebouncedChampionshipAlias] =
-    useState("");
   const [parsedRaces, setParsedRaces] = useState<ParsedRace[]>([]);
   const [isParsingRaces, setIsParsingRaces] = useState(false);
   const [gameData, setGameData] = useState<RaceRoomData | null>(null);
@@ -185,15 +190,6 @@ export default function BuildResultsDatabase() {
     if (resultFiles.length === 0) return "No files selected";
     return `${resultFiles.length} result file${resultFiles.length > 1 ? "s" : ""} selected`;
   }, [resultFiles.length]);
-
-  // Debounce championship alias to avoid iframe refresh on every keystroke
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedChampionshipAlias(championshipAlias);
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, [championshipAlias]);
 
   // Load game data for parsing
   useEffect(() => {
@@ -325,6 +321,54 @@ export default function BuildResultsDatabase() {
     return { carName, carIcon };
   }, [assets, parsedRaces]);
 
+  const handleCreateOrUpdate = useCallback(() => {
+    const aliasTrimmed = championshipAlias.trim();
+
+    if (!aliasTrimmed) {
+      alert("Please enter a championship alias before saving.");
+      return;
+    }
+
+    if (parsedRaces.length === 0) {
+      alert("Select at least one RaceRoom result file before saving.");
+      return;
+    }
+
+    const existing = championships.find(
+      (c) => c.alias.toLowerCase() === aliasTrimmed.toLowerCase(),
+    );
+
+    const baseRaces = (existing?.raceData as ParsedRace[] | undefined) ?? [];
+    const existingKeys = new Set(baseRaces.map(buildRaceKey));
+    const mergedRaces = [...baseRaces];
+
+    parsedRaces.forEach((race) => {
+      const key = buildRaceKey(race);
+      if (!existingKeys.has(key)) {
+        mergedRaces.push(race);
+        existingKeys.add(key);
+      }
+    });
+
+    const { carName, carIcon } = resolveCarInfo();
+
+    addOrUpdateChampionship({
+      alias: aliasTrimmed,
+      fileName: `${aliasTrimmed}.html`,
+      races: mergedRaces.length,
+      generatedAt: new Date().toISOString(),
+      carName: carName || existing?.carName,
+      carIcon: carIcon || existing?.carIcon,
+      raceData: mergedRaces,
+    });
+
+    alert(
+      existing
+        ? "Championship updated in the local database."
+        : "Championship created in the local database.",
+    );
+  }, [addOrUpdateChampionship, championships, championshipAlias, parsedRaces, resolveCarInfo]);
+
   return (
     <Container className="py-4">
       <Card bg="dark" text="white" className="border-secondary">
@@ -343,10 +387,18 @@ export default function BuildResultsDatabase() {
           <Row className="g-3 align-items-start">
             <Col lg={7}>
               <p className="text-white-50 mb-3">
-                We fetch car classes and tracks directly from
-                https://game.raceroom.com/leaderboard to get the updated
-                official icons. If the site&apos;s CORS blocks the request,
-                paste the page HTML below and retry the analysis.
+                Downloads the leaderboard page from{" "}
+                <a
+                  href="https://game.raceroom.com/leaderboard"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-white ms-1"
+                >
+                  https://game.raceroom.com/leaderboard
+                </a>
+                , parses it to collect the latest class and track icon URLs, and stores
+                them for reuse. If the request is blocked by CORS, paste the page HTML
+                below and run the analysis again.
               </p>
               <div className="d-flex gap-2 mb-3">
                 <Button
@@ -481,119 +533,45 @@ export default function BuildResultsDatabase() {
                   onChange={(e) => setChampionshipAlias(e.target.value)}
                 />
                 <Form.Text className="text-white-50">
-                  Will be used to name the final archive and JSON files.
+                  Used as the championship name and filename for downloads in
+                  the viewer.
                 </Form.Text>
               </Form.Group>
             </Col>
           </Row>
 
-          {parsedRaces.length > 0 && (
-            <Row className="mt-3">
-              <Col>
-                <Card bg="secondary" text="white">
-                  <Card.Body>
-                    <Card.Title className="h6 mb-3">
-                      Championship Standings Preview
-                    </Card.Title>
-                    <div
-                      style={{
-                        maxHeight: "600px",
-                        overflowY: "auto",
-                        background: "white",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      <iframe
-                        key={`preview-${assets?.classes.length || 0}-${parsedRaces.length}`}
-                        title="Standings Preview"
-                        srcDoc={generateStandingsHTML(
-                          parsedRaces,
-                          debouncedChampionshipAlias || "Championship",
-                          convertAssetsForHTML(assets),
-                          gameData,
-                        )}
-                        style={{
-                          width: "100%",
-                          height: "580px",
-                          border: "none",
-                        }}
-                      />
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
-          )}
-
           <hr className="my-4 border-secondary" />
-          <SectionTitle label="Step 3 · Archive export" />
+          <SectionTitle label="Step 3 · Save to database" />
           <Row className="g-3">
             <Col lg={8}>
               <p className="text-white-50 mb-3">
-                Generate the HTML/JSON archive with standings and results
-                database, replicating the logic of r3e-open-championship. The
-                export will include driver standings, best lap times, and race
-                results.
+                Save or update the championship in your local database using
+                the selected RaceRoom result files and the provided alias. If a
+                championship with the same alias already exists, new races will
+                be merged without duplicating events on the same track and car
+                class.
               </p>
             </Col>
             <Col lg={4}>
               <Button
                 variant="success"
                 size="lg"
-                onClick={() => {
-                  if (parsedRaces.length > 0 && championshipAlias) {
-                    const aliasTrimmed = championshipAlias.trim();
-                    const fileName = `${aliasTrimmed}.html`;
-                    const html = generateStandingsHTML(
-                      parsedRaces,
-                      aliasTrimmed,
-                      convertAssetsForHTML(assets),
-                      gameData,
-                    );
-                    downloadHTML(html, fileName);
-
-                    const { carName, carIcon } = resolveCarInfo();
-
-                    addOrUpdateChampionship({
-                      alias: aliasTrimmed,
-                      fileName,
-                      races: parsedRaces.length,
-                      generatedAt: new Date().toISOString(),
-                      carName,
-                      carIcon,
-                      raceData: parsedRaces,
-                    });
-                  }
-                }}
+                onClick={handleCreateOrUpdate}
                 disabled={parsedRaces.length === 0 || !championshipAlias}
                 className="w-100"
               >
-                Download HTML Standings
-              </Button>
-              <Button
-                variant="outline-info"
-                size="lg"
-                className="w-100 mt-2"
-                onClick={() => {
-                  if (championships.length > 0) {
-                    const html = generateChampionshipIndexHTML(championships);
-                    downloadHTML(html, "index.html");
-                  }
-                }}
-                disabled={championships.length === 0}
-              >
-                Download index.html (all championships)
+                Create or update championship
               </Button>
             </Col>
           </Row>
           {parsedRaces.length === 0 && (
             <Alert variant="info" className="mt-3">
-              ℹ️ Select a results folder in Step 2 to enable export.
+              ℹ️ Select RaceRoom result files in Step 2 to continue.
             </Alert>
           )}
           {parsedRaces.length > 0 && !championshipAlias && (
             <Alert variant="info" className="mt-3">
-              ℹ️ Enter a championship alias in Step 2 to enable export.
+              ℹ️ Enter a championship alias in Step 2 to enable saving.
             </Alert>
           )}
         </Card.Body>

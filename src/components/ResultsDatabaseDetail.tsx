@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Alert, Button, Container } from "react-bootstrap";
 import { useChampionshipStore } from "../store/championshipStore";
 import { useLeaderboardAssetsStore } from "../store/leaderboardAssetsStore";
 import { makeTime } from "../utils/timeUtils";
+import { generateStandingsHTML, downloadHTML } from "../utils/htmlGenerator";
 import "./ResultsDatabaseDetail.css";
 
 interface DriverStanding {
@@ -75,6 +76,14 @@ function getRacePosition(slots: any[], driver: string): number | null {
 }
 
 function calculateDriverStandings(races: any[]): DriverStanding[] {
+  // Identify human players: the first driver in each race's slots array
+  const humanDriverNames = new Set<string>();
+  for (const race of races) {
+    if (race.slots && race.slots.length > 0) {
+      humanDriverNames.add(race.slots[0].Driver);
+    }
+  }
+
   const driverMap = new Map<
     string,
     {
@@ -90,19 +99,12 @@ function calculateDriverStandings(races: any[]): DriverStanding[] {
   for (const race of races) {
     for (const slot of race.slots) {
       if (driverMap.has(slot.Driver)) {
-        const entry = driverMap.get(slot.Driver)!;
-        if (
-          !entry.isHuman &&
-          typeof slot.UserId === "number" &&
-          slot.UserId > 0
-        ) {
-          entry.isHuman = true;
-        }
+        // Driver already exists, no need to update isHuman
       } else {
         driverMap.set(slot.Driver, {
           vehicle: slot.Vehicle,
           vehicleId: slot.VehicleId,
-          isHuman: !!(typeof slot.UserId === "number" && slot.UserId > 0),
+          isHuman: humanDriverNames.has(slot.Driver),
           team: slot.Team,
           raceResults: [],
           racePoints: [],
@@ -266,6 +268,7 @@ function calculateVehicleStandings(races: any[]): VehicleStanding[] {
 function getBestLapTimesPerRace(races: any[], topN = 10): BestTime[][] {
   return races.map((race) => {
     const raceLapTimes: BestTime[] = [];
+    const humanDriver = race.slots && race.slots.length > 0 ? race.slots[0].Driver : null;
 
     race.slots.forEach((slot: any) => {
       if (slot.BestLap) {
@@ -275,7 +278,7 @@ function getBestLapTimesPerRace(races: any[], topN = 10): BestTime[][] {
             driver: slot.Driver,
             vehicle: slot.Vehicle,
             vehicleId: slot.VehicleId,
-            isHuman: !!(typeof slot.UserId === "number" && slot.UserId > 0),
+            isHuman: slot.Driver === humanDriver,
             time: makeTime(parseTime(slot.BestLap)),
             timeMs,
           });
@@ -291,6 +294,7 @@ function getBestLapTimesPerRace(races: any[], topN = 10): BestTime[][] {
 function getBestQualifyingTimesPerRace(races: any[], topN = 10): BestTime[][] {
   return races.map((race) => {
     const raceQualTimes: BestTime[] = [];
+    const humanDriver = race.slots && race.slots.length > 0 ? race.slots[0].Driver : null;
 
     race.slots.forEach((slot: any) => {
       if (slot.QualTime) {
@@ -300,7 +304,7 @@ function getBestQualifyingTimesPerRace(races: any[], topN = 10): BestTime[][] {
             driver: slot.Driver,
             vehicle: slot.Vehicle,
             vehicleId: slot.VehicleId,
-            isHuman: !!(typeof slot.UserId === "number" && slot.UserId > 0),
+            isHuman: slot.Driver === humanDriver,
             time: makeTime(parseTime(slot.QualTime)),
             timeMs,
           });
@@ -422,6 +426,26 @@ export default function ResultsDatabaseDetail() {
     return "";
   };
 
+  const handleDownloadHTML = () => {
+    const leaderboardAssetsForExport = leaderboardAssets
+      ? {
+          classes: Object.fromEntries(
+            leaderboardAssets.classes.map((c) => [c.id, c.iconUrl || ""])
+          ),
+          tracks: Object.fromEntries(
+            leaderboardAssets.tracks.map((t) => [t.name, t.iconUrl || ""])
+          ),
+        }
+      : undefined;
+
+    const html = generateStandingsHTML(
+      championship.raceData!,
+      championship.alias,
+      leaderboardAssetsForExport,
+    );
+    downloadHTML(html, `${championship.alias}.html`);
+  };
+
   return (
     <div className="results-detail-page">
       <Container fluid className="py-4">
@@ -447,6 +471,11 @@ export default function ResultsDatabaseDetail() {
           <p className="results-subtitle mb-0">
             Generated from R3E Toolbox • {formattedDate}
           </p>
+          <div className="mt-3">
+            <Button variant="primary" size="sm" onClick={handleDownloadHTML}>
+              ⬇️ Download as HTML
+            </Button>
+          </div>
         </div>
 
         {/* Driver Standings */}
@@ -463,7 +492,7 @@ export default function ResultsDatabaseDetail() {
                 {raceHeaders.map((header, idx) => {
                   const trackIcon = getTrackIcon(header.name);
                   return (
-                    <th key={`race-${idx}-${header.name}`} colSpan={2} className="track-header">
+                    <th key={`race-${idx}-${header.name}`} colSpan={2}>
                       {trackIcon && <img src={trackIcon} alt={header.name} />}
                       {header.name}
                       {header.time && <span className="track-time">{header.time}</span>}
@@ -473,10 +502,10 @@ export default function ResultsDatabaseDetail() {
               </tr>
               <tr>
                 {raceHeaders.map((header, idx) => (
-                  <th key={`pts-${idx}-${header.name}`}>Pts</th>
-                ))}
-                {raceHeaders.map((header, idx) => (
-                  <th key={`pos-${idx}-${header.name}`}>Pos</th>
+                  <Fragment key={`header-${idx}-${header.name}`}>
+                    <th>Pts</th>
+                    <th>Pos</th>
+                  </Fragment>
                 ))}
               </tr>
             </thead>
@@ -485,29 +514,26 @@ export default function ResultsDatabaseDetail() {
                 const vehicleIcon = getVehicleIcon(standing.vehicleId);
                 const vehicleName = getVehicleName(standing.vehicleId, standing.vehicle);
                 return (
-                  <tr key={standing.driver}>
+                  <tr key={standing.driver} className={standing.isHuman ? "human-driver" : ""}>
                     <td>{standing.position}</td>
                     <td className="driver-name-cell">
                       {standing.driver}
-                      {standing.isHuman && <span className="human-badge">Human</span>}
                     </td>
-                    <td className="vehicle-name-cell">
+                    <td>
                       {vehicleIcon && <img src={vehicleIcon} className="vehicle-icon" alt={vehicleName} />}
                       {vehicleName}
                     </td>
-                    <td className="team-name-cell">{standing.team}</td>
+                    <td>{standing.team}</td>
                     <td className="points-cell">{standing.points}</td>
-                    {standing.racePoints.map((pts, idx) => (
-                      <td key={`pts-${standing.driver}-${idx}`} className="points-cell">
-                        {pts ?? "-"}
-                      </td>
-                    ))}
-                    {standing.raceResults.map((result, idx) => {
+                    {raceHeaders.map((_, idx) => {
+                      const pts = standing.racePoints[idx];
+                      const result = standing.raceResults[idx];
                       const posClass = result !== null && result <= 3 ? getPositionClass(result) : "";
                       return (
-                        <td key={`result-${standing.driver}-${idx}`} className={posClass}>
-                          {result ?? "-"}
-                        </td>
+                        <Fragment key={`race-${standing.driver}-${idx}`}>
+                          <td className="points-cell">{pts ?? "-"}</td>
+                          <td className={posClass}>{result ?? "-"}</td>
+                        </Fragment>
                       );
                     })}
                   </tr>
@@ -529,7 +555,7 @@ export default function ResultsDatabaseDetail() {
                   <th rowSpan={2}>Entries</th>
                   <th rowSpan={2}>Points</th>
                   {raceHeaders.map((header, idx) => (
-                    <th key={`team-race-${header.name}-${idx}`} className="track-header">
+                    <th key={`team-race-${header.name}-${idx}`}>
                       {header.name}
                       {header.time && <span className="track-time">{header.time}</span>}
                     </th>
@@ -540,7 +566,7 @@ export default function ResultsDatabaseDetail() {
                 {teamStandings.map((standing) => (
                   <tr key={standing.team}>
                     <td>{standing.position}</td>
-                    <td className="team-name-cell">{standing.team}</td>
+                    <td>{standing.team}</td>
                     <td>{standing.entries}</td>
                     <td className="points-cell">{standing.points}</td>
                     {standing.racePoints.map((pts, idx) => (
@@ -566,7 +592,7 @@ export default function ResultsDatabaseDetail() {
                 <th rowSpan={2}>Entries</th>
                 <th rowSpan={2}>Points</th>
                 {raceHeaders.map((header, idx) => (
-                  <th key={`vehicle-race-${header.name}-${idx}`} className="track-header">
+                  <th key={`vehicle-race-${header.name}-${idx}`}>
                     {header.name}
                     {header.time && <span className="track-time">{header.time}</span>}
                   </th>
@@ -580,7 +606,7 @@ export default function ResultsDatabaseDetail() {
                 return (
                   <tr key={standing.vehicle}>
                     <td>{standing.position}</td>
-                    <td className="vehicle-name-cell">
+                    <td>
                       {vehicleIcon && <img src={vehicleIcon} className="vehicle-icon" alt={vehicleName} />}
                       {vehicleName}
                     </td>
@@ -626,10 +652,9 @@ export default function ResultsDatabaseDetail() {
                       const vehicleName = getVehicleName(time.vehicleId, time.vehicle);
                       return (
                         <td key={`lap-${championship.alias}-${raceIdx}-${posIdx}`} className="time-cell">
-                          <div className="time-entry">
+                          <div className={`time-entry${time.isHuman ? " human-driver" : ""}`}>
                             <div className="time-driver">
                               {time.driver}
-                              {time.isHuman && <span className="human-badge">Human</span>}
                             </div>
                             <div className="time-info">
                               {vehicleIcon && <img src={vehicleIcon} className="vehicle-icon" alt={vehicleName} />}
@@ -674,10 +699,9 @@ export default function ResultsDatabaseDetail() {
                       const vehicleName = getVehicleName(time.vehicleId, time.vehicle);
                       return (
                         <td key={`qual-${championship.alias}-${raceIdx}-${posIdx}`} className="time-cell">
-                          <div className="time-entry">
+                          <div className={`time-entry${time.isHuman ? " human-driver" : ""}`}>
                             <div className="time-driver">
                               {time.driver}
-                              {time.isHuman && <span className="human-badge">Human</span>}
                             </div>
                             <div className="time-info">
                               {vehicleIcon && <img src={vehicleIcon} className="vehicle-icon" alt={vehicleName} />}
@@ -731,14 +755,13 @@ export default function ResultsDatabaseDetail() {
                     const formattedTime = Number.isFinite(totalTimeSeconds) ? makeTime(totalTimeSeconds) : slot.TotalTime;
                     const vehicleIcon = getVehicleIcon(slot.VehicleId);
                     const vehicleName = getVehicleName(slot.VehicleId, slot.Vehicle);
-                    const isHuman = !!(typeof slot.UserId === "number" && slot.UserId > 0);
+                    const isHuman = race.slots && race.slots.length > 0 && race.slots[0].Driver === slot.Driver;
                     
                     return (
                       <td key={`race-result-${raceIdx}-${posIdx}`} className="race-result-cell">
-                        <div className="race-result-entry">
+                        <div className={`race-result-entry${isHuman ? " human-driver" : ""}`}>
                           <div className="result-driver">
                             {slot.Driver}
-                            {isHuman && <span className="human-badge">Human</span>}
                           </div>
                           <div className="result-vehicle">
                             {vehicleIcon && <img src={vehicleIcon} className="vehicle-icon-small" alt={vehicleName} />}
