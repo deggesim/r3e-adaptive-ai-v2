@@ -387,7 +387,7 @@ export default function BuildResultsDatabase() {
             color: "white",
           }}
         >
-          📊 Build Results Database
+          💾 Build Results Database
         </Card.Header>
         <Card.Body className="p-4">
           <SectionTitle label="Step 1 · Download leaderboard icons" />

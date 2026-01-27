@@ -482,9 +482,8 @@ export default function ResultsDatabaseDetail() {
   };
 
   return (
-    <Container fluid className="py-4">
+    <Container className="py-4">
       <Button
-        variant="outline-secondary"
         onClick={() => navigate("/results-database")}
         className="back-button"
       >

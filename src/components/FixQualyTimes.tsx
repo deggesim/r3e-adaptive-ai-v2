@@ -100,7 +100,7 @@ export default function FixQualyTimes() {
       await new Promise((resolve) => setTimeout(resolve, 300));
 
       // Ask for confirmation before download
-      const shouldDownload = window.confirm(
+      const shouldDownload = globalThis.confirm(
         `File processed successfully!\n\nUpdated ${updatedCount} driver(s).\n\nDownload the fixed file:\n${outputFileName}?`,
       );
 

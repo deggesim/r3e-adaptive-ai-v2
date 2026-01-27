@@ -64,12 +64,12 @@ function ChampionshipCard({
   };
 
   const generatedDate = new Date(championship.generatedAt);
-  const day = String(generatedDate.getDate()).padStart(2, '0');
-  const month = String(generatedDate.getMonth() + 1).padStart(2, '0');
+  const day = String(generatedDate.getDate()).padStart(2, "0");
+  const month = String(generatedDate.getMonth() + 1).padStart(2, "0");
   const year = generatedDate.getFullYear();
-  const hours = String(generatedDate.getHours()).padStart(2, '0');
-  const minutes = String(generatedDate.getMinutes()).padStart(2, '0');
-  const seconds = String(generatedDate.getSeconds()).padStart(2, '0');
+  const hours = String(generatedDate.getHours()).padStart(2, "0");
+  const minutes = String(generatedDate.getMinutes()).padStart(2, "0");
+  const seconds = String(generatedDate.getSeconds()).padStart(2, "0");
   const formattedDate = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 
   return (
@@ -226,7 +226,7 @@ export default function ResultsDatabaseViewer() {
       return;
     }
 
-    const races = championship.raceData as ParsedRace[];
+    const races = championship.raceData;
     const html = generateStandingsHTML(races, championship.alias);
 
     downloadHTML(
@@ -242,164 +242,178 @@ export default function ResultsDatabaseViewer() {
   };
 
   return (
-    <Container fluid className="py-4">
-      <div className="mb-4">
-        <h2 className="h3 text-white mb-2">📊 Results Database Viewer</h2>
-        <p className="text-white-50 mb-0">
-          View and manage your saved championship results
-        </p>
-      </div>
-
-      {/* Stats Section */}
-      {championships.length > 0 && (
-        <Row className="g-3 mb-4">
-          <Col md={4}>
-            <Card className="bg-dark border-secondary">
-              <Card.Body className="text-center">
-                <div className="h2 text-primary mb-1">
-                  {championships.length}
-                </div>
-                <div className="text-white-50 small">Championships</div>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={4}>
-            <Card className="bg-dark border-secondary">
-              <Card.Body className="text-center">
-                <div className="h2 text-success mb-1">{totalRaces}</div>
-                <div className="text-white-50 small">Total Races</div>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={4}>
-            <Card className="bg-dark border-secondary">
-              <Card.Body className="text-center">
-                <div className="h2 text-info mb-1">
-                  {championships.length > 0
-                    ? Math.round(totalRaces / championships.length)
-                    : 0}
-                </div>
-                <div className="text-white-50 small">
-                  Avg. Races/Championship
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      )}
-
-      {/* Search and Actions */}
-      <Card className="bg-dark border-secondary mb-4">
+    <Container className="py-4">
+      <Card bg="dark" text="white" className="border-secondary">
+        <Card.Header
+          as="h2"
+          className="text-center"
+          style={{
+            background: "linear-gradient(135deg, #646cff 0%, #535bf2 100%)",
+            color: "white",
+          }}
+        >
+          📊 Results Database Viewer
+        </Card.Header>
         <Card.Body>
-          <Row className="g-3 align-items-center">
-            <Col md={12}>
-              <Form.Group controlId="searchQuery">
-                <Form.Label className="text-white mb-1">Search</Form.Label>
-                <Form.Control
-                  type="text"
-                  placeholder="Search championships by alias, car name, or filename..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-dark text-white border-secondary"
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
+          <Card.Text className="text-white-50 mb-4">
+            View and manage your saved championship results
+          </Card.Text>
 
-      {/* Championships List */}
-      {filteredChampionships.length === 0 ? (
-        <Alert variant="info" className="bg-dark border-secondary text-white">
-          {championships.length === 0 ? (
-            <>
-              <Alert.Heading>No Championships Yet</Alert.Heading>
-              <p className="mb-0">
-                Build your first championship using the "Build Results Database"
-                tool to see results here.
-              </p>
-            </>
+          {/* Stats Section */}
+          {championships.length > 0 && (
+            <Row className="g-3 mb-4">
+              <Col md={4}>
+                <Card className="bg-dark border-secondary">
+                  <Card.Body className="text-center">
+                    <div className="h2 text-primary mb-1">
+                      {championships.length}
+                    </div>
+                    <div className="text-white-50 small">Championships</div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={4}>
+                <Card className="bg-dark border-secondary">
+                  <Card.Body className="text-center">
+                    <div className="h2 text-success mb-1">{totalRaces}</div>
+                    <div className="text-white-50 small">Total Races</div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={4}>
+                <Card className="bg-dark border-secondary">
+                  <Card.Body className="text-center">
+                    <div className="h2 text-info mb-1">
+                      {championships.length > 0
+                        ? Math.round(totalRaces / championships.length)
+                        : 0}
+                    </div>
+                    <div className="text-white-50 small">
+                      Avg. Races/Championship
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+          )}
+
+          {/* Search and Actions */}
+          <Card className="bg-dark border-secondary mb-4">
+            <Card.Body>
+              <Row className="g-3 align-items-center">
+                <Col md={12}>
+                  <Form.Group controlId="searchQuery">
+                    <Form.Label className="text-white mb-1">Search</Form.Label>
+                    <Form.Control
+                      type="text"
+                      placeholder="Search championships by alias, car name, or filename..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="bg-dark text-white border-secondary"
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
+
+          {/* Championships List */}
+          {filteredChampionships.length === 0 ? (
+            <Alert
+              variant="info"
+              className="bg-dark border-secondary text-white"
+            >
+              {championships.length === 0 ? (
+                <>
+                  <Alert.Heading>No Championships Yet</Alert.Heading>
+                  <p className="mb-0">
+                    Build your first championship using the "Build Results
+                    Database" tool to see results here.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Alert.Heading>No Results Found</Alert.Heading>
+                  <p className="mb-0">
+                    No championships match your search query. Try a different
+                    search term.
+                  </p>
+                </>
+              )}
+            </Alert>
           ) : (
             <>
-              <Alert.Heading>No Results Found</Alert.Heading>
-              <p className="mb-0">
-                No championships match your search query. Try a different search
-                term.
-              </p>
+              <SectionTitle
+                label={`Championships (${filteredChampionships.length})`}
+              />
+              <div className="d-flex justify-content-end mb-3">
+                <Button
+                  variant="outline-info"
+                  onClick={handleDownloadIndex}
+                  disabled={championships.length === 0}
+                >
+                  Download index.html
+                </Button>
+              </div>
+              <Row className="g-3">
+                {filteredChampionships.map((championship) => (
+                  <Col key={championship.alias} md={6} lg={4}>
+                    <ChampionshipCard
+                      championship={championship}
+                      onDelete={removeChampionship}
+                      onClick={handleCardClick}
+                      onDownload={handleDownloadChampionship}
+                    />
+                  </Col>
+                ))}
+              </Row>
+              <div className="mt-4 text-center">
+                <Button
+                  variant="outline-danger"
+                  onClick={() => setShowClearAllModal(true)}
+                  disabled={championships.length === 0}
+                >
+                  Clear All Championships
+                </Button>
+              </div>
             </>
           )}
-        </Alert>
-      ) : (
-        <>
-          <SectionTitle
-            label={`Championships (${filteredChampionships.length})`}
-          />
-          <div className="d-flex justify-content-end mb-3">
-            <Button
-              variant="outline-info"
-              onClick={handleDownloadIndex}
-              disabled={championships.length === 0}
-            >
-              Download index.html
-            </Button>
-          </div>
-          <Row className="g-3">
-            {filteredChampionships.map((championship) => (
-              <Col key={championship.alias} md={6} lg={4}>
-                <ChampionshipCard
-                  championship={championship}
-                  onDelete={removeChampionship}
-                  onClick={handleCardClick}
-                  onDownload={handleDownloadChampionship}
-                />
-              </Col>
-            ))}
-          </Row>
-          <div className="mt-4 text-center">
-            <Button
-              variant="outline-danger"
-              onClick={() => setShowClearAllModal(true)}
-              disabled={championships.length === 0}
-            >
-              Clear All Championships
-            </Button>
-          </div>
-        </>
-      )}
 
-      {/* Clear All Modal */}
-      <Modal
-        show={showClearAllModal}
-        onHide={() => setShowClearAllModal(false)}
-        centered
-        data-bs-theme="dark"
-      >
-        <Modal.Header closeButton className="bg-dark border-secondary">
-          <Modal.Title>Clear All Championships</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="bg-dark">
-          <p className="text-white">
-            Are you sure you want to clear <strong>all</strong> championships
-            from the database?
-          </p>
-          <p className="text-white-50 small mb-0">
-            This will remove all {championships.length} championship
-            {championships.length === 1 ? "" : "s"} from the database. The
-            generated HTML files will not be deleted.
-          </p>
-        </Modal.Body>
-        <Modal.Footer className="bg-dark border-secondary">
-          <Button
-            variant="secondary"
-            onClick={() => setShowClearAllModal(false)}
+          {/* Clear All Modal */}
+          <Modal
+            show={showClearAllModal}
+            onHide={() => setShowClearAllModal(false)}
+            centered
+            data-bs-theme="dark"
           >
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={handleClearAll}>
-            Clear All
-          </Button>
-        </Modal.Footer>
-      </Modal>
+            <Modal.Header closeButton className="bg-dark border-secondary">
+              <Modal.Title>Clear All Championships</Modal.Title>
+            </Modal.Header>
+            <Modal.Body className="bg-dark">
+              <p className="text-white">
+                Are you sure you want to clear <strong>all</strong>{" "}
+                championships from the database?
+              </p>
+              <p className="text-white-50 small mb-0">
+                This will remove all {championships.length} championship
+                {championships.length === 1 ? "" : "s"} from the database. The
+                generated HTML files will not be deleted.
+              </p>
+            </Modal.Body>
+            <Modal.Footer className="bg-dark border-secondary">
+              <Button
+                variant="secondary"
+                onClick={() => setShowClearAllModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={handleClearAll}>
+                Clear All
+              </Button>
+            </Modal.Footer>
+          </Modal>
+        </Card.Body>
+      </Card>
     </Container>
   );
 }
