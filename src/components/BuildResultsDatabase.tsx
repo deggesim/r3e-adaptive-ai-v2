@@ -339,7 +339,7 @@ export default function BuildResultsDatabase() {
       (c) => c.alias.toLowerCase() === aliasTrimmed.toLowerCase(),
     );
 
-    const baseRaces = (existing?.raceData as ParsedRace[] | undefined) ?? [];
+    const baseRaces = existing?.raceData ?? [];
     const existingKeys = new Set(baseRaces.map(buildRaceKey));
     const mergedRaces = [...baseRaces];
 
