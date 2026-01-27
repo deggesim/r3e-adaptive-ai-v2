@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Badge,
@@ -21,6 +21,12 @@ import {
   fetchLeaderboardAssetsWithCache,
 } from "../utils/leaderboardAssets";
 import { parseResultFiles } from "../utils/raceResultParser";
+
+interface LogEntry {
+  type: "info" | "success" | "warning" | "error";
+  message: string;
+  timestamp: number;
+}
 
 function SectionTitle({ label }: { readonly label: string }) {
   return (
@@ -178,6 +184,9 @@ export default function BuildResultsDatabase() {
   const [parsedRaces, setParsedRaces] = useState<ParsedRace[]>([]);
   const [isParsingRaces, setIsParsingRaces] = useState(false);
   const [gameData, setGameData] = useState<RaceRoomData | null>(null);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const logsEndRef = useRef<HTMLDivElement>(null);
 
   // Use store to read cached assets
   const cachedAssets = useLeaderboardAssetsStore((state) => state.assets);
@@ -186,6 +195,26 @@ export default function BuildResultsDatabase() {
   const addOrUpdateChampionship = useChampionshipStore(
     (state) => state.addOrUpdate,
   );
+
+  const addLog = (type: LogEntry["type"], message: string) => {
+    setLogs((prev) => [...prev, { type, message, timestamp: Date.now() }]);
+    setTimeout(() => {
+      logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
+
+  const getLogVariant = (type: LogEntry["type"]) => {
+    switch (type) {
+      case "success":
+        return "success";
+      case "warning":
+        return "warning";
+      case "error":
+        return "danger";
+      default:
+        return "info";
+    }
+  };
 
   const resultsSummary = useMemo(() => {
     if (resultFiles.length === 0) return "No files selected";
@@ -325,54 +354,94 @@ export default function BuildResultsDatabase() {
   const handleCreateOrUpdate = useCallback(() => {
     const aliasTrimmed = championshipAlias.trim();
 
-    if (!aliasTrimmed) {
-      alert("Please enter a championship alias before saving.");
-      return;
-    }
+    // Reset logs and start processing
+    setLogs([]);
+    setIsProcessing(true);
 
-    if (parsedRaces.length === 0) {
-      alert("Select at least one RaceRoom result file before saving.");
-      return;
-    }
+    try {
+      addLog("info", `Championship alias: ${aliasTrimmed}`);
 
-    const existing = championships.find(
-      (c) => c.alias.toLowerCase() === aliasTrimmed.toLowerCase(),
-    );
-
-    const baseRaces = existing?.raceData ?? [];
-    const existingKeys = new Set(baseRaces.map(buildRaceKey));
-    const mergedRaces = [...baseRaces];
-
-    parsedRaces.forEach((race) => {
-      const key = buildRaceKey(race);
-      if (!existingKeys.has(key)) {
-        mergedRaces.push(race);
-        existingKeys.add(key);
+      if (!aliasTrimmed) {
+        throw new Error("Championship alias cannot be empty");
       }
-    });
+      addLog("success", "✔ Championship alias is valid");
 
-    const { carName, carIcon } = resolveCarInfo();
+      if (parsedRaces.length === 0) {
+        throw new Error(
+          "No races parsed. Select at least one RaceRoom result file",
+        );
+      }
+      addLog("success", `✔ ${parsedRaces.length} race(s) parsed`);
 
-    addOrUpdateChampionship({
-      alias: aliasTrimmed,
-      fileName: `${aliasTrimmed}.html`,
-      races: mergedRaces.length,
-      generatedAt: new Date().toISOString(),
-      carName: carName || existing?.carName,
-      carIcon: carIcon || existing?.carIcon,
-      raceData: mergedRaces,
-    });
+      // Check for existing championship
+      const existing = championships.find(
+        (c) => c.alias.toLowerCase() === aliasTrimmed.toLowerCase(),
+      );
 
-    alert(
-      existing
-        ? "Championship updated in the local database."
-        : "Championship created in the local database.",
-    );
+      if (existing) {
+        addLog(
+          "info",
+          `Found existing championship with ${existing.races} race(s)`,
+        );
+      } else {
+        addLog("info", "Creating new championship");
+      }
+
+      const baseRaces = existing?.raceData ?? [];
+      addLog("info", `Base races count: ${baseRaces.length}`);
+
+      // Build race key map to avoid duplicates
+      const existingKeys = new Set(baseRaces.map(buildRaceKey));
+      addLog(
+        "info",
+        `Existing unique race configurations: ${existingKeys.size}`,
+      );
+
+      const mergedRaces = [...baseRaces];
+      let newRacesCount = 0;
+
+      parsedRaces.forEach((race) => {
+        const key = buildRaceKey(race);
+        if (!existingKeys.has(key)) {
+          mergedRaces.push(race);
+          existingKeys.add(key);
+          newRacesCount++;
+        }
+      });
+
+      addLog(
+        "success",
+        `✔ ${newRacesCount} new race configuration(s) added, ${parsedRaces.length - newRacesCount} duplicate(s) skipped`,
+      );
+
+      const { carName, carIcon } = resolveCarInfo();
+      addLog("info", `Car: ${carName || "auto-detected"}`);
+
+      addOrUpdateChampionship({
+        alias: aliasTrimmed,
+        fileName: `${aliasTrimmed}.html`,
+        races: mergedRaces.length,
+        generatedAt: new Date().toISOString(),
+        carName: carName || existing?.carName,
+        carIcon: carIcon || existing?.carIcon,
+        raceData: mergedRaces,
+      });
+
+      addLog(
+        "success",
+        `🎉 Championship ${existing ? "updated" : "created"} successfully with ${mergedRaces.length} total race(s)`,
+      );
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      addLog("error", `❌ ${errorMessage}`);
+    } finally {
+      setIsProcessing(false);
+    }
   }, [
-    addOrUpdateChampionship,
-    championships,
     championshipAlias,
     parsedRaces,
+    championships,
+    addOrUpdateChampionship,
     resolveCarInfo,
   ]);
 
@@ -564,10 +633,19 @@ export default function BuildResultsDatabase() {
                 variant="success"
                 size="lg"
                 onClick={handleCreateOrUpdate}
-                disabled={parsedRaces.length === 0 || !championshipAlias}
+                disabled={
+                  parsedRaces.length === 0 || !championshipAlias || isProcessing
+                }
                 className="w-100"
               >
-                Create or update championship
+                {isProcessing ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    Processing...
+                  </>
+                ) : (
+                  "Create or update championship"
+                )}
               </Button>
             </Col>
           </Row>
@@ -580,6 +658,41 @@ export default function BuildResultsDatabase() {
             <Alert variant="info" className="mt-3">
               ℹ️ Enter a championship alias in Step 2 to enable saving.
             </Alert>
+          )}
+
+          {logs.length > 0 && (
+            <Card bg="dark" className="mt-4 border-secondary">
+              <Card.Header className="d-flex justify-content-between align-items-center">
+                <span>Processing Log</span>
+                <Badge bg="secondary">{logs.length} entries</Badge>
+              </Card.Header>
+              <Card.Body
+                style={{
+                  maxHeight: "400px",
+                  overflowY: "auto",
+                  fontFamily: "monospace",
+                  fontSize: "0.9rem",
+                }}
+              >
+                {logs.map((log) => (
+                  <div
+                    key={log.timestamp}
+                    className={`mb-2 p-2 rounded bg-${getLogVariant(
+                      log.type,
+                    )} bg-opacity-10 border border-${getLogVariant(
+                      log.type,
+                    )} border-opacity-25`}
+                    style={{ color: "#ffffff" }}
+                  >
+                    <Badge bg={getLogVariant(log.type)} className="me-2">
+                      {log.type.toUpperCase()}
+                    </Badge>
+                    <span style={{ color: "#e8e8e8" }}>{log.message}</span>
+                  </div>
+                ))}
+                <div ref={logsEndRef} />
+              </Card.Body>
+            </Card>
           )}
         </Card.Body>
       </Card>
