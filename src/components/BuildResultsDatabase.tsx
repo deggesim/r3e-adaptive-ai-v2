@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Badge,
@@ -21,12 +21,8 @@ import {
   fetchLeaderboardAssetsWithCache,
 } from "../utils/leaderboardAssets";
 import { parseResultFiles } from "../utils/raceResultParser";
-
-interface LogEntry {
-  type: "info" | "success" | "warning" | "error";
-  message: string;
-  timestamp: number;
-}
+import { useProcessingLog } from "../hooks/useProcessingLog";
+import ProcessingLog from "./ProcessingLog";
 
 function SectionTitle({ label }: { readonly label: string }) {
   return (
@@ -66,9 +62,9 @@ function buildRaceKey(race: ParsedRace): string {
     (slot) => slot.ClassId !== undefined || slot.ClassName,
   );
   const classPart =
-    classInfo?.ClassId !== undefined
-      ? String(classInfo.ClassId)
-      : classInfo?.ClassName || "unknown-class";
+    classInfo?.ClassId === undefined
+      ? classInfo?.ClassName || "unknown-class"
+      : String(classInfo.ClassId);
   const trackPart = race.trackid ? String(race.trackid) : race.trackname;
   return `${trackPart}::${classPart}`;
 }
@@ -184,9 +180,9 @@ export default function BuildResultsDatabase() {
   const [parsedRaces, setParsedRaces] = useState<ParsedRace[]>([]);
   const [isParsingRaces, setIsParsingRaces] = useState(false);
   const [gameData, setGameData] = useState<RaceRoomData | null>(null);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  const { logs, addLog, logsEndRef, getLogVariant, setLogs } =
+    useProcessingLog();
 
   // Use store to read cached assets
   const cachedAssets = useLeaderboardAssetsStore((state) => state.assets);
@@ -195,26 +191,6 @@ export default function BuildResultsDatabase() {
   const addOrUpdateChampionship = useChampionshipStore(
     (state) => state.addOrUpdate,
   );
-
-  const addLog = (type: LogEntry["type"], message: string) => {
-    setLogs((prev) => [...prev, { type, message, timestamp: Date.now() }]);
-    setTimeout(() => {
-      logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
-  };
-
-  const getLogVariant = (type: LogEntry["type"]) => {
-    switch (type) {
-      case "success":
-        return "success";
-      case "warning":
-        return "warning";
-      case "error":
-        return "danger";
-      default:
-        return "info";
-    }
-  };
 
   const resultsSummary = useMemo(() => {
     if (resultFiles.length === 0) return "No files selected";
@@ -448,14 +424,7 @@ export default function BuildResultsDatabase() {
   return (
     <Container className="py-4">
       <Card bg="dark" text="white" className="border-secondary">
-        <Card.Header
-          as="h2"
-          className="text-center"
-          style={{
-            background: "linear-gradient(135deg, #646cff 0%, #535bf2 100%)",
-            color: "white",
-          }}
-        >
+        <Card.Header as="h2" className="text-center page-header-gradient">
           💾 Build Results Database
         </Card.Header>
         <Card.Body className="p-4">
@@ -660,40 +629,11 @@ export default function BuildResultsDatabase() {
             </Alert>
           )}
 
-          {logs.length > 0 && (
-            <Card bg="dark" className="mt-4 border-secondary">
-              <Card.Header className="d-flex justify-content-between align-items-center">
-                <span>Processing Log</span>
-                <Badge bg="secondary">{logs.length} entries</Badge>
-              </Card.Header>
-              <Card.Body
-                style={{
-                  maxHeight: "400px",
-                  overflowY: "auto",
-                  fontFamily: "monospace",
-                  fontSize: "0.9rem",
-                }}
-              >
-                {logs.map((log) => (
-                  <div
-                    key={log.timestamp}
-                    className={`mb-2 p-2 rounded bg-${getLogVariant(
-                      log.type,
-                    )} bg-opacity-10 border border-${getLogVariant(
-                      log.type,
-                    )} border-opacity-25`}
-                    style={{ color: "#ffffff" }}
-                  >
-                    <Badge bg={getLogVariant(log.type)} className="me-2">
-                      {log.type.toUpperCase()}
-                    </Badge>
-                    <span style={{ color: "#e8e8e8" }}>{log.message}</span>
-                  </div>
-                ))}
-                <div ref={logsEndRef} />
-              </Card.Body>
-            </Card>
-          )}
+          <ProcessingLog
+            logs={logs}
+            getLogVariant={getLogVariant}
+            logsEndRef={logsEndRef}
+          />
         </Card.Body>
       </Card>
     </Container>

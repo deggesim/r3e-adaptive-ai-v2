@@ -1,26 +1,15 @@
-import { useState, useRef } from "react";
-import { Card, Container, Form, Button, Alert, Badge } from "react-bootstrap";
-
-interface LogEntry {
-  type: "info" | "success" | "warning" | "error";
-  message: string;
-  timestamp: number;
-}
+import { useState } from "react";
+import { Card, Container, Form, Button, Alert } from "react-bootstrap";
+import { useProcessingLog } from "../hooks/useProcessingLog";
+import ProcessingLog from "./ProcessingLog";
 
 export default function FixQualyTimes() {
   const [qualFile, setQualFile] = useState<File | null>(null);
   const [raceFile, setRaceFile] = useState<File | null>(null);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const logsEndRef = useRef<HTMLDivElement>(null);
-
-  const addLog = (type: LogEntry["type"], message: string) => {
-    setLogs((prev) => [...prev, { type, message, timestamp: Date.now() }]);
-    setTimeout(() => {
-      logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
-  };
+  const { logs, addLog, getLogVariant, setLogs, logsEndRef } =
+    useProcessingLog();
 
   const eventsAreEqual = (event1: any, event2: any) =>
     JSON.stringify(event1) === JSON.stringify(event2);
@@ -130,19 +119,6 @@ export default function FixQualyTimes() {
     }
   };
 
-  const getLogVariant = (type: LogEntry["type"]) => {
-    switch (type) {
-      case "success":
-        return "success";
-      case "warning":
-        return "warning";
-      case "error":
-        return "danger";
-      default:
-        return "info";
-    }
-  };
-
   const reset = () => {
     setQualFile(null);
     setRaceFile(null);
@@ -153,14 +129,7 @@ export default function FixQualyTimes() {
   return (
     <Container className="py-4">
       <Card bg="dark" text="white" className="border-secondary">
-        <Card.Header
-          as="h2"
-          className="text-center"
-          style={{
-            background: "linear-gradient(135deg, #646cff 0%, #535bf2 100%)",
-            color: "white",
-          }}
-        >
+        <Card.Header as="h2" className="text-center page-header-gradient">
           ⏱️ Fix Qualy Times
         </Card.Header>
         <Card.Body>
@@ -233,40 +202,11 @@ export default function FixQualyTimes() {
             </div>
           </Form>
 
-          {logs.length > 0 && (
-            <Card bg="dark" className="mt-4 border-secondary">
-              <Card.Header className="d-flex justify-content-between align-items-center">
-                <span>Processing Log</span>
-                <Badge bg="secondary">{logs.length} entries</Badge>
-              </Card.Header>
-              <Card.Body
-                style={{
-                  maxHeight: "400px",
-                  overflowY: "auto",
-                  fontFamily: "monospace",
-                  fontSize: "0.9rem",
-                }}
-              >
-                {logs.map((log) => (
-                  <div
-                    key={log.timestamp}
-                    className={`mb-2 p-2 rounded bg-${getLogVariant(
-                      log.type,
-                    )} bg-opacity-10 border border-${getLogVariant(
-                      log.type,
-                    )} border-opacity-25`}
-                    style={{ color: "#ffffff" }}
-                  >
-                    <Badge bg={getLogVariant(log.type)} className="me-2">
-                      {log.type.toUpperCase()}
-                    </Badge>
-                    <span style={{ color: "#e8e8e8" }}>{log.message}</span>
-                  </div>
-                ))}
-                <div ref={logsEndRef} />
-              </Card.Body>
-            </Card>
-          )}
+          <ProcessingLog
+            logs={logs}
+            getLogVariant={getLogVariant}
+            logsEndRef={logsEndRef}
+          />
         </Card.Body>
       </Card>
     </Container>

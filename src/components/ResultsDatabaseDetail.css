@@ -79,22 +79,24 @@
 
 .results-table .points-cell {
   font-weight: bold;
-  font-size: 1.1em;
 }
 
 .results-table .pos1 {
   background-color: #ffd700 !important;
   color: #000 !important;
+  font-weight: bold;
 }
 
 .results-table .pos2 {
   background-color: #c0c0c0 !important;
   color: #000 !important;
+  font-weight: bold;
 }
 
 .results-table .pos3 {
   background-color: #cd7f32 !important;
   color: #000 !important;
+  font-weight: bold;
 }
 
 /* Podium cells for human drivers: keep podium text color (not ochre) */

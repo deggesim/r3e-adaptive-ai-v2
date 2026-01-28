@@ -374,14 +374,7 @@ const AIDashboard: React.FC = () => {
   return (
     <Container className="py-4">
       <Card bg="dark" text="white" className="border-secondary mb-4">
-        <Card.Header
-          as="h2"
-          className="text-center"
-          style={{
-            background: "linear-gradient(135deg, #646cff 0%, #535bf2 100%)",
-            color: "white",
-          }}
-        >
+        <Card.Header as="h2" className="text-center page-header-gradient">
           🤖 AI Management
         </Card.Header>
         <Card.Body>

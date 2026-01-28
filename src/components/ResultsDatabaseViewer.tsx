@@ -86,14 +86,7 @@ export default function ResultsDatabaseViewer() {
   return (
     <Container className="py-4">
       <Card bg="dark" text="white" className="border-secondary">
-        <Card.Header
-          as="h2"
-          className="text-center"
-          style={{
-            background: "linear-gradient(135deg, #646cff 0%, #535bf2 100%)",
-            color: "white",
-          }}
-        >
+        <Card.Header as="h2" className="text-center page-header-gradient">
           📊 Results Database Viewer
         </Card.Header>
         <Card.Body>

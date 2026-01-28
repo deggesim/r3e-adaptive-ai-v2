@@ -33,12 +33,7 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <Container className="vh-100 p-0">
       <Row className="h-100 g-0">
-        <Col
-          xs={12}
-          md={3}
-          lg={2}
-          className="bg-dark border-end border-secondary"
-        >
+        <Col xs={12} md={3} className="bg-dark border-end border-secondary">
           <div className="sidebar">
             <div className="sidebar-header border-bottom border-secondary text-center">
               <img
@@ -66,7 +61,7 @@ export default function Layout({ children }: LayoutProps) {
             </Nav>
           </div>
         </Col>
-        <Col xs={12} md={9} lg={10} className="main-content-col">
+        <Col xs={12} md={9} className="main-content-col">
           <div className="main-content p-4">{children}</div>
         </Col>
       </Row>
