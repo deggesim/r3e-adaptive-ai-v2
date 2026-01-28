@@ -150,7 +150,6 @@ export default function ResultsDatabaseViewer() {
                       placeholder="Search championships by alias, car name, or filename..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="bg-dark text-white border-secondary"
                     />
                   </Form.Group>
                 </Col>
