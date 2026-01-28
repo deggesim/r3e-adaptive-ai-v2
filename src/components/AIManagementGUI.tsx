@@ -353,11 +353,10 @@ const AIManagementGUI: React.FC<AIManagementGUIProps> = ({
               <p>You are about to apply the following modification:</p>
               <ul>
                 <li>
-                  <strong>Class:</strong>{" "}
-                  {assets!.classes[selectedClassId].name}
+                  <strong>Class:</strong> {assets.classes[selectedClassId].name}
                 </li>
                 <li>
-                  <strong>Track:</strong> {assets!.tracks[selectedTrackId].name}
+                  <strong>Track:</strong> {assets.tracks[selectedTrackId].name}
                 </li>
                 <li>
                   <strong>AI Range:</strong> {aifrom} - {aito} (step: {spacing})
