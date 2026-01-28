@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Badge,
@@ -8,20 +8,25 @@ import {
   Container,
   Form,
   ListGroup,
+  Modal,
   Row,
   Spinner,
 } from "react-bootstrap";
 import { Link } from "react-router-dom";
+import { useProcessingLog } from "../hooks/useProcessingLog";
 import { useChampionshipStore } from "../store/championshipStore";
 import { useLeaderboardAssetsStore } from "../store/leaderboardAssetsStore";
-import type { LeaderboardAssets, RaceRoomData } from "../types";
+import type {
+  ChampionshipEntry,
+  LeaderboardAssets,
+  RaceRoomData,
+} from "../types";
 import type { ParsedRace } from "../types/raceResults";
 import {
   fetchLeaderboardAssets,
   fetchLeaderboardAssetsWithCache,
 } from "../utils/leaderboardAssets";
 import { parseResultFiles } from "../utils/raceResultParser";
-import { useProcessingLog } from "../hooks/useProcessingLog";
 import ProcessingLog from "./ProcessingLog";
 
 function SectionTitle({ label }: { readonly label: string }) {
@@ -181,6 +186,11 @@ export default function BuildResultsDatabase() {
   const [isParsingRaces, setIsParsingRaces] = useState(false);
   const [gameData, setGameData] = useState<RaceRoomData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [pendingRestoreFile, setPendingRestoreFile] = useState<
+    ChampionshipEntry[] | null
+  >(null);
+  const databaseInputRef = useRef<HTMLInputElement>(null);
   const { logs, addLog, logsEndRef, getLogVariant, setLogs } =
     useProcessingLog();
 
@@ -191,6 +201,7 @@ export default function BuildResultsDatabase() {
   const addOrUpdateChampionship = useChampionshipStore(
     (state) => state.addOrUpdate,
   );
+  const setAllChampionships = useChampionshipStore((state) => state.setAll);
 
   const resultsSummary = useMemo(() => {
     if (resultFiles.length === 0) return "No files selected";
@@ -326,6 +337,64 @@ export default function BuildResultsDatabase() {
 
     return { carName, carIcon };
   }, [assets, parsedRaces]);
+
+  const handleRestoreDatabase = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const content = await file.text();
+        const importedChampionships: ChampionshipEntry[] = JSON.parse(content);
+
+        // Validate structure
+        if (
+          !Array.isArray(importedChampionships) ||
+          importedChampionships.length === 0
+        ) {
+          throw new Error(
+            "Invalid database file: must contain an array of championships",
+          );
+        }
+
+        // Basic validation of first item
+        const first = importedChampionships[0];
+        if (!first.alias || !first.races || typeof first.races !== "number") {
+          throw new Error(
+            "Invalid database format: missing required championship properties",
+          );
+        }
+
+        setPendingRestoreFile(importedChampionships);
+        setShowRestoreModal(true);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog("error", `❌ Error reading database file: ${message}`);
+        if (databaseInputRef.current) {
+          databaseInputRef.current.value = "";
+        }
+      }
+    },
+    [addLog],
+  );
+
+  const confirmRestoreDatabase = useCallback(() => {
+    if (!pendingRestoreFile) return;
+
+    setShowRestoreModal(false);
+    setAllChampionships(pendingRestoreFile);
+    addLog(
+      "success",
+      `✔ Database restored with ${pendingRestoreFile.length} championship(s)`,
+    );
+    addLog("success", "🎉 Database restoration complete");
+    setPendingRestoreFile(null);
+
+    // Reset file input
+    if (databaseInputRef.current) {
+      databaseInputRef.current.value = "";
+    }
+  }, [pendingRestoreFile, setAllChampionships, addLog]);
 
   const handleCreateOrUpdate = useCallback(() => {
     const aliasTrimmed = championshipAlias.trim();
@@ -565,6 +634,23 @@ export default function BuildResultsDatabase() {
                   </div>
                 )}
               </Alert>
+              <div className="mt-3">
+                <Form.Group controlId="restoreDatabase" className="mb-3">
+                  <Form.Label className="text-white">
+                    Or restore from backup
+                  </Form.Label>
+                  <Form.Control
+                    type="file"
+                    accept=".json"
+                    ref={databaseInputRef}
+                    onChange={handleRestoreDatabase}
+                  />
+                  <Form.Text className="text-white-50">
+                    Upload a previously exported r3e-championships.json file to
+                    restore your database.
+                  </Form.Text>
+                </Form.Group>
+              </div>
             </Col>
             <Col lg={6}>
               <Form.Group controlId="championshipAlias" className="mb-3">
@@ -636,6 +722,46 @@ export default function BuildResultsDatabase() {
           />
         </Card.Body>
       </Card>
+
+      {/* Restore Database Confirmation Modal */}
+      <Modal
+        show={showRestoreModal}
+        onHide={() => setShowRestoreModal(false)}
+        data-bs-theme="dark"
+      >
+        <Modal.Header closeButton className="bg-dark border-secondary">
+          <Modal.Title>Restore Championship Database</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="bg-dark text-white">
+          <p className="text-danger">
+            ⚠️ <strong>Warning:</strong> This action cannot be undone.
+          </p>
+          <p>
+            You are about to restore your championship database from a backup
+            file. This will:
+          </p>
+          <ul>
+            <li>Replace all current championships with those in the backup</li>
+            <li>Overwrite any championships with the same alias</li>
+            <li>Not delete existing HTML files</li>
+          </ul>
+          <p className="text-white-50 mb-0">
+            Make sure you have a backup of your current database before
+            proceeding.
+          </p>
+        </Modal.Body>
+        <Modal.Footer className="bg-dark border-secondary">
+          <Button
+            variant="secondary"
+            onClick={() => setShowRestoreModal(false)}
+          >
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={confirmRestoreDatabase}>
+            Restore Database
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 }

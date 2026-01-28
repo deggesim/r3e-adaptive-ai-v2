@@ -7,6 +7,7 @@ interface ChampionshipState {
   addOrUpdate: (entry: ChampionshipEntry) => void;
   remove: (alias: string) => void;
   clear: () => void;
+  setAll: (entries: ChampionshipEntry[]) => void;
 }
 
 export const useChampionshipStore = create<ChampionshipState>()(
@@ -37,6 +38,8 @@ export const useChampionshipStore = create<ChampionshipState>()(
         })),
 
       clear: () => set({ championships: [] }),
+
+      setAll: (entries) => set({ championships: entries }),
     }),
     {
       name: "r3e-toolbox-championships",

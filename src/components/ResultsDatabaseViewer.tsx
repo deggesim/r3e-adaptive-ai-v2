@@ -89,6 +89,25 @@ export default function ResultsDatabaseViewer() {
     addLog("success", "📥 Downloaded index.html");
   };
 
+  const handleDownloadDatabase = () => {
+    if (championships.length === 0) {
+      addLog("warning", "⚠ No championships to download");
+      return;
+    }
+
+    const databaseJSON = JSON.stringify(championships, null, 2);
+    const blob = new Blob([databaseJSON], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "r3e-championships.json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    addLog("success", "📥 Downloaded championship database");
+  };
+
   return (
     <Container className="py-4">
       <Card bg="dark" text="white" className="border-secondary">
@@ -186,7 +205,14 @@ export default function ResultsDatabaseViewer() {
               <SectionTitle
                 label={`Championships (${filteredChampionships.length})`}
               />
-              <div className="d-flex justify-content-end mb-3">
+              <div className="d-flex justify-content-end gap-2 mb-3">
+                <Button
+                  onClick={handleDownloadDatabase}
+                  disabled={championships.length === 0}
+                  variant="secondary"
+                >
+                  Download database
+                </Button>
                 <Button
                   onClick={handleDownloadIndex}
                   disabled={championships.length === 0}
