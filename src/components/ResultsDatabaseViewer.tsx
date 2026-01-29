@@ -47,14 +47,42 @@ export default function ResultsDatabaseViewer() {
     navigate(`/results-database/${encodeURIComponent(alias)}`);
   };
 
-  const filteredChampionships = championships.filter((championship) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      championship.alias.toLowerCase().includes(query) ||
-      championship.carName?.toLowerCase().includes(query) ||
-      championship.fileName.toLowerCase().includes(query)
-    );
-  });
+  const filteredChampionships = championships
+    .filter((championship) => {
+      const query = searchQuery.toLowerCase();
+      return (
+        championship.alias.toLowerCase().includes(query) ||
+        championship.carName?.toLowerCase().includes(query) ||
+        championship.fileName.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      // Ordina per la data della prima gara, se disponibile
+      const getFirstRaceDate = (champ: ChampionshipEntry): number => {
+        if (!champ.raceData || champ.raceData.length === 0) {
+          // Fallback: usa generatedAt se non ci sono dati gare
+          return new Date(champ.generatedAt).getTime();
+        }
+        // Usa la data della prima gara (timestring)
+        const firstRace = champ.raceData[0];
+        if (!firstRace.timestring) {
+          return new Date(champ.generatedAt).getTime();
+        }
+        // Parse timestring formato: "2024_12_29_06_44_00"
+        const parts = firstRace.timestring.split("_");
+        if (parts.length >= 6) {
+          const [year, month, day, hour, minute, second] = parts.map(Number);
+          return new Date(year, month - 1, day, hour, minute, second).getTime();
+        }
+        return new Date(champ.generatedAt).getTime();
+      };
+      
+      const dateA = getFirstRaceDate(a);
+      const dateB = getFirstRaceDate(b);
+      
+      // Ordine decrescente (più recenti prima)
+      return dateB - dateA;
+    });
 
   const handleClearAll = () => {
     clearAll();

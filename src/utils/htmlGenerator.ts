@@ -623,7 +623,9 @@ body {
           ${races
             .map((race) => {
               const trackImg = leaderboardAssets?.tracks[race.trackname] || "";
-              return `<th colspan="2" class="track-header">${trackImg ? `<img src="${trackImg}" alt="${race.trackname}" />` : ""}<div>${race.trackname}</div>${race.timestring ? `<span class="track-time">${race.timestring}</span>` : ""}</th>`;
+              const imgHtml = trackImg ? `<img src="${trackImg}" alt="${race.trackname}" />` : "";
+              const timeHtml = race.timestring ? `<span class="track-time">${race.timestring}</span>` : "";
+              return `<th colspan="2" class="track-header">${imgHtml}<div>${race.trackname}</div>${timeHtml}</th>`;
             })
             .join("")}
         </tr>
@@ -679,10 +681,10 @@ body {
           <th rowspan="2">Entries</th>
           <th rowspan="2">Points</th>
           ${races
-            .map(
-              (race) =>
-                `<th>${race.trackname}${race.timestring ? `<span class="track-time">${race.timestring}</span>` : ""}</th>`,
-            )
+            .map((race) => {
+              const timeSpan = race.timestring ? `<span class="track-time">${race.timestring}</span>` : "";
+              return `<th>${race.trackname}${timeSpan}</th>`;
+            })
             .join("")}
         </tr>
       </thead>
@@ -715,10 +717,10 @@ body {
           <th rowspan="2">Entries</th>
           <th rowspan="2">Points</th>
           ${races
-            .map(
-              (race) =>
-                `<th>${race.trackname}${race.timestring ? `<span class="track-time">${race.timestring}</span>` : ""}</th>`,
-            )
+            .map((race) => {
+              const timeSpan = race.timestring ? `<span class="track-time">${race.timestring}</span>` : "";
+              return `<th>${race.trackname}${timeSpan}</th>`;
+            })
             .join("")}
         </tr>
       </thead>

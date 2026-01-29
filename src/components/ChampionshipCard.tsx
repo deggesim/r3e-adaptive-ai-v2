@@ -64,7 +64,7 @@ function ChampionshipCard({
                     }}
                   />
                 )}
-                <span className="text-truncate">{championship.alias}</span>
+                <span style={{ wordBreak: "break-word", overflowWrap: "break-word" }}>{championship.alias}</span>
               </Card.Title>
               {championship.carName && (
                 <Card.Subtitle className="text-white-50 small mb-2">
@@ -90,12 +90,12 @@ function ChampionshipCard({
                 <Badge bg="primary">{championship.races}</Badge>
               </div>
             </ListGroup.Item>
-            <ListGroup.Item className="bg-dark border-secondary py-2 px-0">
+            {/* <ListGroup.Item className="bg-dark border-secondary py-2 px-0">
               <div className="d-flex justify-content-between">
                 <span className="text-white-50 small">Generated:</span>
                 <span className="text-white small">{formattedDate}</span>
               </div>
-            </ListGroup.Item>
+            </ListGroup.Item> */}
             <ListGroup.Item className="bg-dark border-secondary py-2 px-0 border-bottom-0">
               <div className="d-flex justify-content-between align-items-center">
                 <span className="text-white-50 small">HTML File:</span>

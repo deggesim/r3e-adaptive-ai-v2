@@ -85,13 +85,11 @@ function AssetListItem({
         <img
           src={item.iconUrl}
           alt={item.name}
-          style={{ width: 32, height: 32, objectFit: "contain", flexShrink: 0 }}
+          style={{ objectFit: "contain", flexShrink: 0 }}
         />
       ) : (
         <div
           style={{
-            width: 32,
-            height: 32,
             background: "#1f1f2b",
             flexShrink: 0,
           }}

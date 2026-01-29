@@ -30,9 +30,9 @@ export default function ProcessingLog({
           fontSize: "0.9rem",
         }}
       >
-        {logs.map((log) => (
+        {logs.map((log, index) => (
           <div
-            key={log.timestamp}
+            key={`${log.timestamp}-${index}`}
             className={`mb-2 p-2 rounded bg-${getLogVariant(
               log.type,
             )} bg-opacity-10 border border-${getLogVariant(
