@@ -54,7 +54,7 @@ Corrects missing or invalid qualification times in RaceRoom race result files by
 Analyzes RaceRoom race result files and generates championship standings with visual asset integration from the official leaderboard.
 
 **Features:**
-- **Leaderboard Icon Download**: Fetches car class and track icons from the official RaceRoom leaderboard
+- **Leaderboard Icon Download**: Fetches car and track icons from the official RaceRoom leaderboard
 - **Asset Caching**: Automatically caches downloaded icons in localStorage to avoid repeated network requests
 - **Smart Cache Management**: Shows cache status (💾 Cached) and provides "Clear cache" button to reset on demand
 - **Batch Result Parsing**: Processes multiple race result files from a folder simultaneously
@@ -89,7 +89,7 @@ The toolbox implements automatic localStorage caching for leaderboard assets (ic
 
 **How it works:**
 1. First load: `fetchLeaderboardAssetsWithCache()` downloads icons from the leaderboard
-2. Assets stored: All car class and track URLs saved to localStorage via Zustand store
+2. Assets stored: All car and track URLs saved to localStorage via Zustand store
 3. Subsequent loads: Data retrieved from cache instantly without network request
 4. Cache indicator: UI shows "💾 Cached in localStorage" badge when data is from cache
 5. Manual clear: "Clear cache" button removes all cached assets from localStorage
@@ -97,7 +97,6 @@ The toolbox implements automatic localStorage caching for leaderboard assets (ic
 **Technical implementation** (`src/store/leaderboardAssetsStore.ts`):
 - Zustand store with persist middleware for localStorage persistence
 - Stores: asset URLs, icons, metadata, and fetch timestamps
-- Methods: `getClassIconUrl()`, `getTrackIconUrl()` for direct lookups
 - State: `assets`, `isLoading`, `error` for UI feedback
 
 **Usage in components**:
