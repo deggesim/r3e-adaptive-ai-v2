@@ -2,6 +2,8 @@
   "name": "r3e-toolbox",
   "private": true,
   "version": "0.0.0",
+  "description": "Comprehensive toolkit for RaceRoom Racing Experience (R3E) - AI management, race results, and championship standings",
+  "author": "Simone De Gennaro",
   "type": "module",
   "main": "electron/main.mjs",
   "scripts": {
@@ -34,7 +36,7 @@
     "@vitejs/plugin-react": "^5.1.1",
     "concurrently": "^9.1.0",
     "electron": "^39.2.3",
-    "electron-builder": "^25.2.0",
+    "electron-builder": "^26.4.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
@@ -59,11 +61,20 @@
       "target": [
         "nsis",
         "portable"
-      ]
+      ],
+      "icon": "public/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "snap"
+      ],
+      "category": "Utility",
+      "icon": "public/icon.png"
     }
   }
 }
