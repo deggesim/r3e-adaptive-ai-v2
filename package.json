@@ -3,15 +3,20 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "electron/main.mjs",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev:vite": "vite",
+    "dev:electron": "electron .",
     "build": "tsc -b && vite build",
+    "build:electron": "tsc -b && vite build && electron-builder",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@types/react-router-dom": "^5.3.3",
     "bootstrap": "^5.3.8",
+    "electron-is-dev": "^3.0.0",
     "fast-xml-parser": "^5.3.3",
     "mathjs": "^15.1.0",
     "react": "^19.2.0",
@@ -22,16 +27,43 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@types/electron": "^1.6.10",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^9.1.0",
+    "electron": "^39.2.3",
+    "electron-builder": "^25.2.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.r3e-toolbox.app",
+    "productName": "R3E Toolbox",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "public"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

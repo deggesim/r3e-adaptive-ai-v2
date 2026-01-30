@@ -1,0 +1,13 @@
+import { contextBridge, ipcRenderer } from 'electron';
+
+contextBridge.exposeInMainWorld('electron', {
+  // Dialog operations
+  openFile: (options) => ipcRenderer.invoke('dialog:openFile', options),
+  openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
+  saveFile: (defaultPath, filters) => ipcRenderer.invoke('dialog:saveFile', defaultPath, filters),
+
+  // File system operations
+  readFile: (filePath) => ipcRenderer.invoke('fs:readFile', filePath),
+  writeFile: (filePath, content) => ipcRenderer.invoke('fs:writeFile', filePath, content),
+  readdir: (dirPath) => ipcRenderer.invoke('fs:readdir', dirPath),
+});
