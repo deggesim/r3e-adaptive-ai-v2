@@ -231,8 +231,7 @@ ipcMain.handle("app:findR3eDataFile", async () => {
         return { success: true, data: content, path: filePath };
       }
     } catch (error) {
-      // Continue to next path
-      continue;
+      console.warn(`Failed to read file at ${filePath}:`, error.message);
     }
   }
 
@@ -284,8 +283,7 @@ ipcMain.handle("app:findAiadaptationFile", async () => {
         return { success: true, data: content, path: filePath };
       }
     } catch (error) {
-      // Continue to next path
-      continue;
+      console.warn(`Failed to read file at ${filePath}:`, error.message);
     }
   }
 

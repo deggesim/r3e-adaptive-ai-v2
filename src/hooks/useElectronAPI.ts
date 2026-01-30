@@ -3,7 +3,7 @@
  * Falls back to browser File API if running in web mode.
  */
 export const useElectronAPI = () => {
-  const isElectron = typeof window !== 'undefined' && window.electron;
+  const isElectron = globalThis.window !== undefined && globalThis.electron;
 
   return {
     isElectron,
@@ -12,28 +12,28 @@ export const useElectronAPI = () => {
       if (!isElectron) {
         throw new Error('Electron API not available');
       }
-      return window.electron.openFile(options);
+      return globalThis.electron.openFile(options);
     },
 
     async openDirectory(): Promise<string | null> {
       if (!isElectron) {
         throw new Error('Electron API not available');
       }
-      return window.electron.openDirectory();
+      return globalThis.electron.openDirectory();
     },
 
     async saveFile(defaultPath = '', filters = []): Promise<string | null> {
       if (!isElectron) {
         throw new Error('Electron API not available');
       }
-      return window.electron.saveFile(defaultPath, filters);
+      return globalThis.electron.saveFile(defaultPath, filters);
     },
 
     async readFile(filePath: string): Promise<string> {
       if (!isElectron) {
         throw new Error('Electron API not available');
       }
-      const result = await window.electron.readFile(filePath);
+      const result = await globalThis.electron.readFile(filePath);
       if (!result.success) {
         throw new Error(result.error || 'Failed to read file');
       }
@@ -44,7 +44,7 @@ export const useElectronAPI = () => {
       if (!isElectron) {
         throw new Error('Electron API not available');
       }
-      const result = await window.electron.writeFile(filePath, content);
+      const result = await globalThis.electron.writeFile(filePath, content);
       if (!result.success) {
         throw new Error(result.error || 'Failed to write file');
       }
@@ -54,7 +54,7 @@ export const useElectronAPI = () => {
       if (!isElectron) {
         throw new Error('Electron API not available');
       }
-      const result = await window.electron.readdir(dirPath);
+      const result = await globalThis.electron.readdir(dirPath);
       if (!result.success) {
         throw new Error(result.error || 'Failed to read directory');
       }
@@ -65,14 +65,14 @@ export const useElectronAPI = () => {
       if (!isElectron) {
         return { success: false, error: 'Electron API not available' };
       }
-      return window.electron.findR3eDataFile();
+      return globalThis.electron.findR3eDataFile();
     },
 
     async findAiadaptationFile(): Promise<{ success: boolean; data?: string; path?: string; error?: string }> {
       if (!isElectron) {
         return { success: false, error: 'Electron API not available' };
       }
-      return window.electron.findAiadaptationFile();
+      return globalThis.electron.findAiadaptationFile();
     },
   };
 };
