@@ -131,6 +131,8 @@ const AIManagement: React.FC = () => {
             } catch (error) {
               addLog("warning", `⚠ Failed to parse r3e-data.json from RaceRoom installation: ${error}`);
             }
+          } else {
+            addLog("info", `ℹ r3e-data.json not found in installation paths, using bundled version`);
           }
         }
 
@@ -154,7 +156,7 @@ const AIManagement: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [electron]);
+  }, [electron.isElectron]);
 
   useEffect(() => {
     setProcessed(processDatabase(database));
@@ -181,6 +183,8 @@ const AIManagement: React.FC = () => {
             } catch (error) {
               addLog("warning", `⚠ Failed to parse aiadaptation.xml from RaceRoom UserData: ${error}`);
             }
+          } else {
+            addLog("info", `ℹ aiadaptation.xml not found in UserData paths`);
           }
         }
       } catch (error) {
@@ -193,7 +197,7 @@ const AIManagement: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [electron]);
+  }, [electron.isElectron]);
 
   // ============ FILE UPLOAD HANDLERS ============
 
@@ -209,7 +213,6 @@ const AIManagement: React.FC = () => {
         setAssets(parsedAssets);
         addLog("success", "✔ RaceRoom data JSON loaded successfully");
       } catch (error) {
-        console.error("Error parsing JSON:", error);
         addLog("error", "❌ Error parsing JSON file");
       }
     },
@@ -232,7 +235,6 @@ const AIManagement: React.FC = () => {
           addLog("success", "✔ AI Adaptation XML loaded successfully");
         }
       } catch (error) {
-        console.error("Error parsing XML:", error);
         addLog("error", "❌ Error parsing XML file");
       }
     },
@@ -259,7 +261,6 @@ const AIManagement: React.FC = () => {
         link.remove();
         URL.revokeObjectURL(url);
       } catch (error) {
-        console.error("Error generating XML:", error);
         addLog("error", "❌ Error generating XML file");
       }
     },
@@ -383,7 +384,6 @@ const AIManagement: React.FC = () => {
           URL.revokeObjectURL(url);
           addLog("success", "📥 Downloaded modified aiadaptation.xml");
         } catch (error) {
-          console.error("Error generating XML:", error);
           addLog("error", "❌ Error generating XML file");
         }
       }

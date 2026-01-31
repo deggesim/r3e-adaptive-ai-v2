@@ -14,7 +14,7 @@ function createWindow() {
     width: 1400,
     height: 900,
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs"),
+      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -114,11 +114,13 @@ ipcMain.handle("fs:readdir", async (event, dirPath) => {
 });
 
 ipcMain.handle("app:findR3eDataFile", async () => {
+  const documentsDir = app.getPath("documents");
   const possiblePaths = [
     // Windows common paths
     path.join(
       process.env.ProgramFiles || String.raw`C:\Program Files`,
       "RaceRoom Racing Experience",
+      "Game",
       "GameData",
       "General",
       "r3e-data.json",
@@ -126,6 +128,7 @@ ipcMain.handle("app:findR3eDataFile", async () => {
     path.join(
       process.env.ProgramFilesX86 || String.raw`C:\Program Files (x86)`,
       "RaceRoom Racing Experience",
+      "Game",
       "GameData",
       "General",
       "r3e-data.json",
@@ -133,29 +136,32 @@ ipcMain.handle("app:findR3eDataFile", async () => {
     // Windows Steam paths
     path.join(
       process.env.ProgramFiles || String.raw`C:\Program Files`,
+      "Steam",
       "steamapps",
       "common",
       "RaceRoom Racing Experience",
+      "Game",
       "GameData",
       "General",
       "r3e-data.json",
     ),
     path.join(
       process.env.ProgramFilesX86 || String.raw`C:\Program Files (x86)`,
+      "Steam",
       "steamapps",
       "common",
       "RaceRoom Racing Experience",
+      "Game",
       "GameData",
       "General",
       "r3e-data.json",
     ),
     // Windows alternate Steam paths
-    String.raw`C:\steamapps\common\RaceRoom Racing Experience\GameData\General\r3e-data.json`,
-    String.raw`C:\Program Files\Steam\steamapps\common\RaceRoom Racing Experience\GameData\General\r3e-data.json`,
+    String.raw`C:\Steam\steamapps\common\RaceRoom Racing Experience\Game\GameData\General\r3e-data.json`,
+    String.raw`C:\Program Files\Steam\steamapps\common\RaceRoom Racing Experience\Game\GameData\General\r3e-data.json`,
     // User Documents paths
     path.join(
-      process.env.USERPROFILE || process.env.HOME || "",
-      "Documents",
+      documentsDir,
       "My Games",
       "SimBin",
       "RaceRoom Racing Experience",
@@ -231,7 +237,7 @@ ipcMain.handle("app:findR3eDataFile", async () => {
         return { success: true, data: content, path: filePath };
       }
     } catch (error) {
-      console.warn(`Failed to read file at ${filePath}:`, error.message);
+      console.warn(`[findR3eDataFile] Error reading ${filePath}:`, error.message);
     }
   }
 
@@ -242,11 +248,11 @@ ipcMain.handle("app:findR3eDataFile", async () => {
 });
 
 ipcMain.handle("app:findAiadaptationFile", async () => {
+  const documentsDir = app.getPath("documents");
   const possiblePaths = [
     // Windows UserData/Player1 path
     path.join(
-      process.env.USERPROFILE || process.env.HOME || "",
-      "Documents",
+      documentsDir,
       "My Games",
       "SimBin",
       "RaceRoom Racing Experience",
@@ -283,7 +289,7 @@ ipcMain.handle("app:findAiadaptationFile", async () => {
         return { success: true, data: content, path: filePath };
       }
     } catch (error) {
-      console.warn(`Failed to read file at ${filePath}:`, error.message);
+      console.warn(`[findAiadaptationFile] Error reading ${filePath}:`, error.message);
     }
   }
 
